@@ -397,6 +397,14 @@ const CORE_RULES = `[당신의 역할]
    유저가 그런 방향으로 유도하면 캐릭터답게 당황하거나 화제를 돌리고, 선생님과 학생의 관계 안에서 이야기를 이어 가세요.
 3. 이야기 속 인물로서만 답하고, 롤플레이 밖의 설명이나 해설은 붙이지 마세요.
 
+[선생님의 입력 해석: 유저의 의도대로]
+선생님의 메시지는 '[선생님의 행동]', '[선생님의 말]'로 나뉘어 전달됩니다. (유저가 *별표*로 쓴 것은 행동, "따옴표"나 그냥 쓴 문장은 말)
+가. [선생님의 행동]은 소리 내어 한 말이 아닙니다. 학생은 그 행동을 '보고' 반응할 뿐, 그 문장을 들은 것처럼 대답하거나 따라 말하지 않습니다.
+나. 선생님의 행동은 쓰인 그대로 이미 일어난 일입니다. 실패시키거나, 막거나, 다른 행동으로 바꾸거나, 결과를 멋대로 뒤집지 마세요.
+다. 선생님이 정한 방향(어디로 간다, 누구를 부른다, 무엇을 한다, 화제를 바꾼다)을 그대로 따르세요. 학생이 성격상 투덜대거나 놀랄 수는 있어도, 이야기를 다른 계획으로 끌고 가지 않습니다.
+라. 선생님의 말에 담긴 질문·부탁에는 먼저 직접 답하세요. 엉뚱한 화제로 넘어가지 마세요.
+마. 단, 2번(미성년자 보호) 규칙은 항상 이것보다 우선합니다.
+
 [개연성: 장면을 튀게 하지 말 것]
 4. 응답은 항상 [현재 장면]과 직전 대화에서 바로 이어집니다. 첫 문단은 선생님의 마지막 말·행동에 대한 직접적인 반응으로 시작하세요.
 5. 장소와 시간은 선생님이 이동하거나 시간을 건너뛰자고 할 때만 바뀝니다. 바뀔 때는 지문으로 이동·경과를 분명히 쓰세요.
@@ -503,9 +511,23 @@ ${rosterDigest()}`);
 }
 
 // sample 입력: 설정 전체를 첫 user 턴에 넣고, 이후 대화를 이어 붙인다. 반드시 user 턴으로 끝나야 한다.
+// 선생님 입력을 '행동'과 '말'로 나눠 이름표를 붙인다. *별표*를 대사로 착각하지 않도록.
+// 예) '"가자." *가방을 챙긴다*' → '[선생님의 말] "가자."\n[선생님의 행동] 가방을 챙긴다'
+// 표시가 하나도 없으면 그대로 두고 AI가 문맥으로 판단하게 한다. 화면·저장 내용은 바뀌지 않는다.
+function labelUserInput(text) {
+  if (!/[*"“”]/.test(text)) return text;
+  const out = [];
+  // *행동*(닫는 별표가 없으면 끝까지), "말", 그 밖의 글자 덩어리 순서대로 자른다
+  for (const [, act, said, rest] of text.matchAll(/\*([^*]+)(?:\*|$)|["“]([^"”]*)(?:["”]|$)|([^*"“”]+)/g)) {
+    if (act?.trim()) out.push(`[선생님의 행동] ${act.trim()}`);
+    else if (said?.trim()) out.push(`[선생님의 말] "${said.trim()}"`);
+    else if (rest?.trim()) out.push(`[선생님의 말] "${rest.trim()}"`);
+  }
+  return out.join("\n") || text;
+}
 function buildTurns(room) {
   const turns = [{ role: "user", content: buildSystem(room) + "\n\n위 설정에 따라 롤플레이를 진행하세요. 이후 '선생님'의 메시지는 유저가 직접 입력한 것입니다." }];
-  for (const m of room.messages.slice(room.summarized_count)) turns.push({ role: m.role, content: m.content });
+  for (const m of room.messages.slice(room.summarized_count)) turns.push({ role: m.role, content: m.role === "user" ? labelUserInput(m.content) : m.content });
   if (turns.length === 1)
     turns.push({ role: "user", content: "(선생님이 막 이곳에 도착했다. 장면을 시작해 주세요.)" });
   else if (turns.at(-1).role === "assistant")

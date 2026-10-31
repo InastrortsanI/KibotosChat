@@ -43,9 +43,26 @@ def apply_affection(bonds: dict[str, Bond], changes: dict[str, int]) -> dict[str
     return applied
 
 
+USER_PART = re.compile(r'\*([^*]+)(?:\*|$)|["“]([^"”]*)(?:["”]|$)|([^*"“”]+)')
+
+
+def label_user_input(text: str) -> str:
+    """선생님 입력을 '행동'(*별표*)과 '말'로 나눠 이름표를 붙인다. 표시가 없으면 그대로 둔다."""
+    if not re.search(r'[*"“”]', text):
+        return text
+    out = []
+    for act, said, rest in USER_PART.findall(text):
+        if act.strip():
+            out.append(f"[선생님의 행동] {act.strip()}")
+        elif (said or rest).strip():
+            out.append(f'[선생님의 말] "{(said or rest).strip()}"')
+    return "\n".join(out) or text
+
+
 def history_turns(room: ChatRoom) -> list[Turn]:
     """요약에 아직 흡수되지 않은 최근 대화만 LLM에 보낸다."""
-    return [Turn(m.role, m.content) for m in room.messages[room.summarized_count:]]
+    return [Turn(m.role, label_user_input(m.content) if m.role == "user" else m.content)
+            for m in room.messages[room.summarized_count:]]
 
 
 def _parse_json(text: str) -> dict:
