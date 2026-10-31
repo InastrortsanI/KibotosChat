@@ -373,9 +373,21 @@ function findStudentByName(name) {
   if (!k) return null;
   return state.students[k] || state.students[k.replace(/\s+/g, "_")] || state.students[k.split(/\s+/).pop()] || null;
 }
-// '이름: "대사"' 줄의 이름이 영어·id면 명부의 한국어 이름으로 바꿔 저장한다 (다음 턴에 AI가 따라 하지 않도록).
-const koreanizeNames = (text) => text.replace(/^([A-Za-z][A-Za-z_ .]{0,30})([:：]\s*["“])/gm,
-  (m, who, rest) => { const st = findStudentByName(who); return st ? st.name + rest : m; });
+// AI 응답을 화면에 보이고 저장하기 전에 다듬는다 (다음 턴에 AI가 잘못된 표기를 따라 하지 않도록).
+// ① '이름: "대사"' 줄의 이름이 영어·id면 한국어 이름으로 ② 대사 속 '선상님'·'센세' 같은 호칭 변형을 그 학생의 공식 호칭으로
+const WRONG_CALL = /선상님|선상|센세|센쎄|선생님아/g;
+function koreanizeNames(text) {
+  return text.split("\n").map((line) => {
+    const m = line.match(/^\s*([^:："*]{1,32}?)\s*([:：]\s*["“])(.*)$/);
+    if (!m) return line.replace(WRONG_CALL, "선생님");
+    const st = findStudentByName(m[1]);
+    if (!st) return line.replace(WRONG_CALL, "선생님");
+    const call = (st.call || "선생님").split(" (")[0]; // '스승님 (또는 선생님)' → '스승님'
+    let said = m[3].replace(WRONG_CALL, call);
+    if (call === "선생") said = said.replace(/선생님/g, "선생"); // 호시노·카요코 등은 공식 대사에서 항상 '선생'
+    return st.name + m[2] + said;
+  }).join("\n");
+}
 
 // ───────── 프롬프트 (Python app/prompts.py 를 옮긴 것) ─────────
 const STAGES = [
@@ -530,7 +542,7 @@ function labelUserInput(text) {
 }
 function buildTurns(room) {
   const turns = [{ role: "user", content: buildSystem(room) + "\n\n위 설정에 따라 롤플레이를 진행하세요. 이후 '선생님'의 메시지는 유저가 직접 입력한 것입니다." }];
-  for (const m of room.messages.slice(room.summarized_count)) turns.push({ role: m.role, content: m.role === "user" ? labelUserInput(m.content) : m.content });
+  for (const m of room.messages.slice(room.summarized_count)) turns.push({ role: m.role, content: m.role === "user" ? labelUserInput(m.content) : koreanizeNames(m.content) });
   if (turns.length === 1)
     turns.push({ role: "user", content: "(선생님이 막 이곳에 도착했다. 장면을 시작해 주세요.)" });
   else if (turns.at(-1).role === "assistant")
