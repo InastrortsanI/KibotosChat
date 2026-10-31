@@ -883,6 +883,7 @@ const ERROR_TEXT = {
   sampling_disabled: "이 계정에서는 Claude 응답을 쓸 수 없습니다.",
   rate_limited: "요청이 너무 많거나 사용 한도에 닿았습니다. 잠시 뒤 다시 시도하세요.",
   overloaded: "AI 서버가 붐벼서 답하지 못했습니다. 잠시 뒤 다시 시도하세요.",
+  timeout: "AI가 너무 오래 답하지 않아 중단했습니다. 다시 시도하거나 'AI 설정'에서 다른 모델을 골라 보세요.",
   session_expired: "claude.ai에 다시 로그인한 뒤 시도하세요.",
   refused: "이 내용에는 답할 수 없습니다. 다른 방향으로 이야기를 이어 보세요.",
   prompt_too_large: "대화가 너무 깁니다. 되돌리기로 몇 턴을 지우거나 새 대화를 시작하세요.",
@@ -911,6 +912,14 @@ async function runTurn(kind) {
   setBusy(true);
   $("#messages").querySelector(".empty")?.remove();
   $("#messages").insertAdjacentHTML("beforeend", `<li class="msg assistant" id="live"><span class="status-line">답장을 쓰는 중…</span></li>`);
+  // 첫 글자가 나올 때까지 경과 시간을 보여 준다. 생각이 긴 모델은 수십 초 걸릴 수 있어서, 멈춘 게 아니라는 걸 알리기 위해서다.
+  const startedAt = Date.now();
+  const ticker = setInterval(() => {
+    const st = $("#live .status-line");
+    if (!st || $("#live").children.length > 1) return;
+    const sec = Math.round((Date.now() - startedAt) / 1000);
+    st.textContent = st.textContent.replace(/(\s*\d+초)?$/, ` ${sec}초`);
+  }, 1000);
   // 답장 자리를 미리 확보하고 시작 부분까지만 한 번 내려 준다. 써지는 동안에는 화면을 움직이지 않는다.
   $("#live").style.minHeight = Math.round($("#messages").clientHeight * 0.6) + "px";
   revealStart($("#live"));
@@ -963,6 +972,7 @@ async function runTurn(kind) {
     }
     if (e?.code === "not_granted" || e?.code === "sampling_disabled") state.sample = null;
   } finally {
+    clearInterval(ticker);
     if (state.ctl === ctl) state.ctl = null;
     setBusy(false);
   }
@@ -1092,7 +1102,8 @@ function directRequest({ provider, key, model }, system, rest, stream) {
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: { systemInstruction: { parts: [{ text: system }] },
         contents: rest.map((t) => ({ role: t.role === "assistant" ? "model" : "user", parts: [{ text: t.content }] })),
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.9 } } };
+        // 3.x Flash는 답하기 전에 '생각'을 하고, 그 분량도 이 제한에 포함된다. 너무 작으면 답장 쓸 몫이 모자라 빈 응답이 된다.
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.9 } } };
   }
   if (provider === "claude") {
     return { url: "https://api.anthropic.com/v1/messages",
@@ -1102,12 +1113,12 @@ function directRequest({ provider, key, model }, system, rest, stream) {
   }
   return { url: "https://api.openai.com/v1/chat/completions",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: { model, messages: [{ role: "system", content: system }, ...rest], max_completion_tokens: 2000, stream } };
+    body: { model, messages: [{ role: "system", content: system }, ...rest], max_completion_tokens: 4096, stream } };
 }
 
 // 스트리밍 조각 하나(SSE의 data: 줄)에서 새로 붙은 글자를 꺼낸다.
 function deltaOf(provider, data) {
-  if (provider === "gemini") return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+  if (provider === "gemini") return (data.candidates?.[0]?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || "").join("");
   if (provider === "claude") return data.type === "content_block_delta" ? data.delta?.text || "" : "";
   return data.choices?.[0]?.delta?.content || "";
 }
@@ -1125,7 +1136,11 @@ function httpError(status, body) {
 }
 
 // ───────── 한도에 걸리면 다른 모델로 자동 전환 ─────────
-const FALLBACK_CODES = new Set(["rate_limited", "overloaded", "bad_model"]); // 이 오류들이면 다음 모델로 넘어간다
+const FALLBACK_CODES = new Set(["rate_limited", "overloaded", "bad_model", "timeout"]); // 이 오류들이면 다음 모델로 넘어간다
+const FIRST_DATA_MS = 60 * 1000;      // 첫 응답이 60초 안에 안 오면 포기하고 다음 모델로
+const IDLE_MS = 30 * 1000;            // 답장 도중 30초 동안 아무것도 안 오면 끊긴 것으로 본다
+// 단종되어 다른 모델로 대신 처리되는 이름. 한도에 걸린 모델과 같은 모델로 연결되므로 대체 후보에서 뺀다.
+const RETIRED_MODELS = new Set(["gemini-3.7-flash"]);
 const COOLDOWN_MS = 10 * 60 * 1000;   // 한도에 걸린 모델은 10분 동안 건너뛴다
 const MAX_SWITCHES = 3;               // 한 번 보낼 때 최대 3번까지만 바꿔 본다
 const cooldown = {};                  // 모델 이름 → 다시 써도 되는 시각
@@ -1144,9 +1159,10 @@ async function listModels(cfg) {
   let ids = [];
   try {
     if (cfg.provider === "gemini") {
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": cfg.key } });
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": cfg.key }, signal: AbortSignal.timeout(8000) });
       const data = await res.json();
       ids = (data.models || []).filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+        .filter((m) => !/deprecat|retired|discontinued/i.test(`${m.displayName || ""} ${m.description || ""}`))
         .map((m) => m.name.replace(/^models\//, ""))
         .filter((id) => /^gemini-/.test(id) && !/embed|image|tts|audio|live|vision|robotics|computer|native|exp/i.test(id));
       // flash 계열(빠르고 한도가 넉넉한 편)을 먼저, 그다음 pro. 같은 계열은 버전이 높은 순서
@@ -1154,19 +1170,19 @@ async function listModels(cfg) {
       ids.sort((a, b) => (/flash/.test(b) - /flash/.test(a)) || (ver(b) - ver(a)) || a.localeCompare(b));
     } else if (cfg.provider === "claude") {
       const res = await fetch("https://api.anthropic.com/v1/models?limit=100", { headers: {
-        "x-api-key": cfg.key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" } });
+        "x-api-key": cfg.key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" }, signal: AbortSignal.timeout(8000) });
       const data = await res.json();
       const rank = (id) => (/sonnet/.test(id) ? 0 : /haiku/.test(id) ? 1 : 2);
       ids = (data.data || []).map((m) => m.id).filter((id) => /^claude-/.test(id)).sort((a, b) => rank(a) - rank(b));
     } else {
-      const res = await fetch("https://api.openai.com/v1/models", { headers: { Authorization: `Bearer ${cfg.key}` } });
+      const res = await fetch("https://api.openai.com/v1/models", { headers: { Authorization: `Bearer ${cfg.key}` }, signal: AbortSignal.timeout(8000) });
       const data = await res.json();
       ids = (data.data || []).map((m) => m.id)
         .filter((id) => /^gpt-/.test(id) && !/audio|realtime|image|transcribe|tts|search|embed|instruct|codex|moderation/i.test(id))
         .sort().reverse();
     }
   } catch { /* 목록을 못 받으면 예비 후보만 쓴다 */ }
-  const merged = [...new Set([...ids, ...STATIC_MODELS[cfg.provider]])];
+  const merged = [...new Set([...ids, ...STATIC_MODELS[cfg.provider]])].filter((id) => !RETIRED_MODELS.has(id));
   modelListCache[cacheKey] = merged;
   return merged;
 }
@@ -1193,19 +1209,26 @@ function createDirectSample() {
         if (e.code !== "bad_model") cooldown[model] = Date.now() + COOLDOWN_MS;
         const next = (await listModels(cfg)).find((m) => !tried.has(m) && !(cooldown[m] > Date.now()));
         if (!next) throw e;
-        opts.onStatus?.(`${model} 사용 한도에 닿아 ${next}(으)로 다시 시도하는 중…`);
+        opts.onStatus?.(`${model} ${e.code === "timeout" ? "응답이 너무 늦어" : "사용 한도에 닿아"} ${next}(으)로 다시 시도하는 중…`);
         model = next;
       }
     }
   }
 
   async function call(model, turns, { onText, signal } = {}, stream = true) {
+    // 사용자의 '멈추기'(signal)와 시간 초과를 하나의 AbortController로 묶는다
+    const ctl = new AbortController();
+    let timedOut = false, timer = 0;
+    const arm = (ms) => { clearTimeout(timer); timer = setTimeout(() => { timedOut = true; ctl.abort(); }, ms); };
+    const onUserAbort = () => ctl.abort();
+    if (signal?.aborted) ctl.abort(); else signal?.addEventListener("abort", onUserAbort, { once: true });
+    arm(stream ? FIRST_DATA_MS : FIRST_DATA_MS * 1.5);
     const { system, rest } = splitTurns(typeof turns === "string"
       ? [{ role: "user", content: "당신은 요청한 형식의 JSON만 출력하는 도우미입니다." }, { role: "user", content: turns }] : turns);
     const req = directRequest({ ...cfg, model }, system, rest, stream);
     let text = "";
     try {
-      const res = await fetch(req.url, { method: "POST", headers: req.headers, body: JSON.stringify(req.body), signal });
+      const res = await fetch(req.url, { method: "POST", headers: req.headers, body: JSON.stringify(req.body), signal: ctl.signal });
       if (!res.ok) throw httpError(res.status, await res.text());
       if (!stream) return { text: wholeOf(cfg.provider, await res.json()), truncated: false };
       // 응답 본문을 조금씩 읽어서 'data: {...}' 줄마다 글자를 이어 붙인다 (SSE)
@@ -1214,6 +1237,7 @@ function createDirectSample() {
       for (;;) {
         const { value, done } = await reader.read();
         if (done) break;
+        arm(text ? IDLE_MS : FIRST_DATA_MS); // 뭔가 오고 있으면 타이머를 다시 건다 (생각 중에는 첫 응답 기준 유지)
         buf += dec.decode(value, { stream: true });
         const lines = buf.split("\n"); buf = lines.pop();
         for (const line of lines) {
@@ -1230,9 +1254,15 @@ function createDirectSample() {
       if (!text.trim()) throw { code: "empty_completion", message: "empty" };
       return { text, truncated: false };
     } catch (e) {
-      if (e?.name === "AbortError") throw { code: "cancelled", message: "cancelled", text };
+      if (e?.name === "AbortError" || e?.name === "TimeoutError") {
+        if (timedOut) throw { code: "timeout", message: `${model} 응답 시간 초과`, text: text || undefined };
+        throw { code: "cancelled", message: "cancelled", text };
+      }
       if (e?.code) throw { ...e, text: text || undefined };
       throw { code: "upstream_error", message: String(e), text: text || undefined }; // 네트워크 오류 등
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onUserAbort);
     }
   }
   const sample = (turns, opts) => withFallback(turns, opts, true);
