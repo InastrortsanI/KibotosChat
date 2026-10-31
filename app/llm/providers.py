@@ -97,5 +97,5 @@ class MockProvider(LLMProvider):
         lines = [f"*{speakers[0][0]}이(가) 선생님의 말을 듣고 잠시 생각에 잠긴다.*"]
         for name, sid in speakers[:3]:
             lines.append(f'{name}: "선생님, 방금 \'{last[:20]}\'라고 하셨죠? 이건 테스트 응답이에요."')
-        lines.append(f"[호감도 {speakers[0][1]}:{random.choice(['+1', '0'])}]")
+        lines.append(f"[호감도 {speakers[0][1]}:{random.choice(['+1', '+2', '+3', '-1'])}]")
         return "\n\n".join(lines)

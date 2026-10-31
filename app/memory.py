@@ -18,7 +18,7 @@ def split_affection(text: str) -> tuple[str, dict[str, int]]:
     """응답에서 [호감도 id:+1] 태그를 떼어 내고, {학생id: 변화량}을 돌려준다."""
     changes: dict[str, int] = {}
     for sid, delta in AFFECTION_TAG.findall(text):
-        changes[sid] = max(-2, min(2, int(delta)))  # 모델이 과하게 줘도 ±2로 자른다
+        changes[sid] = max(-5, min(5, int(delta)))  # 모델이 과하게 줘도 ±5로 자른다
     return AFFECTION_TAG.sub("", text).strip(), changes
 
 
