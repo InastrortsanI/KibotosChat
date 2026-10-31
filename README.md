@@ -3,16 +3,21 @@
 「블루 아카이브」 세계관에서 샬레의 선생님이 되어 학생들과 대화하는 AI 롤플레이 웹사이트입니다.
 비상업 개인 포트폴리오용 팬 프로젝트이며, 게임의 이미지·로고·원문 대사는 포함하지 않습니다.
 
+**바로 플레이: https://inastrortsani.github.io/KibotosChat/**
+메뉴 아래쪽 'AI 설정'에 본인의 AI API 키(Gemini, Claude, OpenAI 중 하나)를 넣으면 시작할 수 있습니다.
+
 ## 기능
+- **자유 모드**: 장소를 고르면 그곳에 있을 법한 학생이 자연스럽게 등장. 만난 학생 모두 호감도 반영
 - **학생 1:1 대화**: 플레이어블 학생 140명. 차림(수영복·새해 등)과 상황을 골라 시작
 - **스토리 모드**: 시나리오 11종 + 자유 시나리오. 최대 6명이 함께 등장
+- **메시지 삭제·입력 도우미**: 메시지를 눌러 삭제, `" "`·`* *` 버튼으로 대사·행동 입력
 - **호감도·기억**: 학생별 호감도(헤일로 링으로 표시)가 방을 넘어 유지되고, 긴 대화는 자동 요약되어 기억으로 남음
 - **계정·대화 저장**: 회원가입/로그인, 모든 대화 DB 저장, 다시 생성·되돌리기
 - **AI 모델 교체**: Gemini / Claude / OpenAI / 테스트용 Mock 중 화면에서 선택
 
 ## 실행 방법 (Windows 기준)
 ```bash
-cd bluearchive-chat
+cd KibotosChat
 python -m venv .venv
 .venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
@@ -27,16 +32,22 @@ API 키 없이도 `LLM_PROVIDER=mock` 상태로 화면과 DB 흐름을 모두 �
 
 > `.env`와 `*.db`는 개인 정보(API 키, 계정)가 들어가므로 Git에 올리지 마세요. `.gitignore`에 이미 등록되어 있습니다.
 
-## 모바일 버전 (claude.ai 페이지)
-Python 서버 없이 폰에서 바로 쓰는 버전입니다. claude.ai에 게시된 한 장짜리 페이지로 동작합니다.
-- AI 응답: 보는 사람 본인의 Claude 계정으로 생성 (API 키 불필요, 첫 사용 때 허용 여부를 물어봄)
-- 저장: 대화·호감도·기억이 본인 계정의 개인 공간에 저장 (다른 사람은 볼 수 없음)
-- 데이터: 서버 버전과 같은 `data/*.json`을 사용. 데이터를 고친 뒤 아래 명령으로 다시 만들고 게시합니다.
+## 웹 버전 (GitHub Pages / claude.ai)
+Python 서버 없이 브라우저만으로 동작하는 한 장짜리 페이지(`index.html`)입니다. 같은 파일이 두 곳에서 동작합니다.
+
+| | GitHub Pages | claude.ai 페이지 |
+|---|---|---|
+| AI 응답 | 방문자가 'AI 설정'에 넣은 API 키로 브라우저에서 직접 호출 | 보는 사람의 Claude 계정 (키 불필요) |
+| 대화 저장 | 그 브라우저(localStorage)에만 저장 | claude.ai 계정의 개인 공간 |
+| 모델 | Gemini / Claude / OpenAI 중 선택, 모델 이름 변경 가능 | Claude (기본/빠르게/깊이 있게) |
+
+- API 키는 방문자의 브라우저에만 저장되고, 선택한 AI 회사 외에는 어디로도 보내지지 않습니다. 저장소에는 어떤 키도 들어 있지 않습니다.
+- 데이터나 템플릿을 고친 뒤 아래 명령으로 다시 만들고 커밋하면 GitHub Pages에 반영됩니다.
   ```bash
-  python tools/build_artifact.py   # artifact/template.html + data/*.json → dist/kivotos-chat.html
+  python tools/build_artifact.py   # artifact/template.html + data/*.json → index.html (+ claude.ai용 dist/)
   ```
-- 서버 버전과 다른 점: 계정은 claude.ai 로그인으로 대신하고, 모델은 Claude만 씁니다(기본/빠르게/깊이 있게 선택).
-  프롬프트·호감도·요약 로직은 `app/prompts.py`, `app/memory.py`를 JS로 옮긴 것이므로, 한쪽을 고치면 다른 쪽도 맞춰 주세요.
+- 서버 버전과 다른 점: 계정이 없고, 프롬프트·호감도·요약 로직은 `app/prompts.py`, `app/memory.py`를 JS로 옮긴 것입니다.
+  자유 모드·메시지 삭제·장면 기록은 현재 웹 버전에만 있습니다.
 
 ## 폴더 구조
 ```
@@ -54,8 +65,8 @@ app/            서버 (FastAPI)
 data/           세계관·학교·학생·시나리오 데이터 (JSON)
 frontend/       화면 (HTML/CSS/JS)
 tools/          학생 명부 빌드 스크립트와 성격 원본
-artifact/       모바일(claude.ai 페이지) 버전 템플릿
-dist/           빌드된 모바일 페이지
+artifact/       웹 버전 템플릿 (index.html 의 원본)
+index.html      빌드된 웹 버전 (GitHub Pages 첫 화면)
 docs/           코드 학습 설명서
 ```
 

@@ -186,6 +186,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
     <ul id="room-list" class="room-list"><li class="empty">대화 목록을 불러오는 중…</li></ul>
     <div class="sidebar-foot">
       <div class="row"><span id="me-name" class="muted">선생님</span><button class="btn link" id="open-settings">이름 바꾸기</button></div>
+      <div class="row web-only" hidden><span id="ai-status" class="muted">AI 미설정</span><button class="btn link" id="open-ai">AI 설정</button></div>
       <span id="save-note" class="save-note"></span>
     </div>
   </aside>
@@ -268,6 +269,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 "use strict";
 // 세계관·학교·학생·시나리오 데이터. tools/build_artifact.py 가 data/*.json 을 이 자리에 넣는다.
 const DATA = /*__DATA__*/null;
+
+// 실행 위치: claude.ai 안이면 window.claude 가 있다. 그 밖(GitHub Pages 등)에서는 방문자의 API 키로 AI를 직접 부른다.
+const IN_CLAUDE = !!window.claude;
 
 const $ = (s) => document.querySelector(s);
 const state = {
@@ -686,6 +690,7 @@ function renderWorld() {
 // ───────── 선생님 이름 ─────────
 function renderMe() { $("#me-name").textContent = state.profile.sensei_name ? `${state.profile.sensei_name} 선생님` : "선생님"; }
 $("#open-settings").onclick = () => {
+  $("#sidebar").classList.remove("open");
   $("#sheet-body").innerHTML = `<h2>선생님 이름</h2><p class="muted">학생들이 이야기 속에서 참고하는 이름입니다. 비워 두면 '선생님'으로만 불립니다.</p>
     <label for="f-name">이름<input id="f-name" maxlength="20" value="${esc(state.profile.sensei_name)}"></label>
     <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button><button class="btn primary" id="save-name">저장</button></div>`;
@@ -851,6 +856,8 @@ function setBusy(on) {
 }
 
 const ERROR_TEXT = {
+  bad_key: "API 키가 올바르지 않거나 권한이 없습니다. 'AI 설정'에서 키를 확인하세요.",
+  bad_model: "모델 이름을 찾을 수 없습니다. 'AI 설정'에서 모델 이름을 확인하세요.",
   not_granted: "Claude 사용이 허용되지 않았습니다. 페이지를 새로 열면 다시 물어봅니다.",
   sampling_disabled: "이 계정에서는 Claude 응답을 쓸 수 없습니다.",
   rate_limited: "요청이 너무 많거나 사용 한도에 닿았습니다. 잠시 뒤 다시 시도하세요.",
@@ -865,6 +872,10 @@ async function runTurn(kind) {
   const room = state.room;
   if (!room || state.busy) return;
   if (!state.sample) {
+    if (!IN_CLAUDE) {
+      $("#messages").insertAdjacentHTML("beforeend", `<li class="error-line">AI를 쓰려면 API 키가 필요합니다. 메뉴 아래쪽 'AI 설정'에서 키를 넣은 뒤 '이어서'를 눌러 주세요.</li>`);
+      scrollDown(); openAiSheet(); return;
+    }
     $("#messages").insertAdjacentHTML("beforeend", `<li class="error-line">이 화면에서는 AI 응답을 쓸 수 없습니다. claude.ai 앱이나 웹에서 이 페이지를 열어 주세요.</li>`);
     return scrollDown();
   }
@@ -971,11 +982,170 @@ $("#delete-room").onclick = () => {
   $("#sheet").showModal();
 };
 
+// ───────── 직접 AI 호출 (claude.ai 밖, 예: GitHub Pages) ─────────
+// claude.ai의 sample(turns, {onText, signal})과 같은 모양으로 만들어서, 채팅 코드는 그대로 쓴다.
+// API 키는 방문자 브라우저(localStorage)에만 저장되고 어디에도 올라가지 않는다.
+const AI_PROVIDERS = {
+  gemini: { label: "Gemini (Google)", model: "gemini-3.6-flash", keyHelp: "aistudio.google.com 에서 발급" },
+  claude: { label: "Claude (Anthropic)", model: "claude-sonnet-5-5", keyHelp: "console.anthropic.com 에서 발급 (유료)" },
+  openai: { label: "OpenAI", model: "gpt-6-luna", keyHelp: "platform.openai.com 에서 발급 (유료)" },
+};
+let aiConfig = { provider: "gemini", key: "", model: "" };
+
+function loadAiConfig() {
+  try { aiConfig = { ...aiConfig, ...JSON.parse(localStorage.getItem("kc:ai") || "{}") }; } catch { /* 저장소를 못 쓰면 이번 방문 동안만 기억 */ }
+}
+function saveAiConfig() {
+  try { localStorage.setItem("kc:ai", JSON.stringify(aiConfig)); } catch { toast("이 브라우저는 설정을 저장할 수 없어, 창을 닫으면 키를 다시 넣어야 합니다."); }
+}
+function initDirectAI() {
+  loadAiConfig();
+  document.querySelectorAll(".web-only").forEach((el) => (el.hidden = false));
+  $("#tier").hidden = true; // 응답 방식(기본/빠르게)은 claude.ai 전용. 여기서는 'AI 설정'의 모델이 결정한다.
+  state.sample = aiConfig.key ? createDirectSample() : null;
+  $("#ai-status").textContent = aiConfig.key ? `${AI_PROVIDERS[aiConfig.provider].label.split(" ")[0]} 사용 중` : "AI 미설정";
+}
+
+function openAiSheet() {
+  $("#sidebar").classList.remove("open"); // 휴대폰에서 메뉴가 열린 채로 남아 채팅을 가리지 않게
+  const p = AI_PROVIDERS[aiConfig.provider];
+  $("#sheet-body").innerHTML = `<h2>AI 설정</h2>
+    <p class="muted">학생들의 답장은 여기 넣은 API 키로 생성됩니다. 키는 이 브라우저에만 저장되고 다른 곳으로 보내지지 않습니다(선택한 AI 회사로만 전송). 공용 컴퓨터에서는 쓰고 나서 키를 지워 주세요.</p>
+    <label for="f-provider">AI 회사
+      <select id="f-provider">${Object.entries(AI_PROVIDERS).map(([k, v]) => `<option value="${k}" ${k === aiConfig.provider ? "selected" : ""}>${esc(v.label)}</option>`).join("")}</select></label>
+    <label for="f-key">API 키 <span class="muted" id="key-help">${esc(p.keyHelp)}</span>
+      <input id="f-key" type="password" autocomplete="off" spellcheck="false" value="${esc(aiConfig.key)}" placeholder="키를 붙여 넣으세요"></label>
+    <label for="f-model">모델 이름 <span class="muted">(비워 두면 기본값)</span>
+      <input id="f-model" spellcheck="false" value="${esc(aiConfig.model)}" placeholder="${esc(p.model)}"></label>
+    <div class="sheet-actions"><button class="btn ghost" id="ai-clear">키 지우기</button><button class="btn ghost" value="cancel">닫기</button><button class="btn primary" id="ai-save">저장</button></div>`;
+  $("#f-provider").onchange = () => {
+    const np = AI_PROVIDERS[$("#f-provider").value];
+    $("#key-help").textContent = np.keyHelp; $("#f-model").placeholder = np.model;
+  };
+  $("#ai-save").onclick = (e) => {
+    e.preventDefault();
+    const provider = $("#f-provider").value;
+    const key = $("#f-key").value.trim();
+    if (!key) return toast("API 키를 넣어 주세요.");
+    // 회사를 바꿨는데 예전 회사의 모델 이름이 그대로 남아 있으면 비운다 (다른 회사 모델명은 통하지 않음)
+    const modelIn = $("#f-model").value.trim();
+    aiConfig = { provider, key, model: provider !== aiConfig.provider && modelIn === aiConfig.model ? "" : modelIn };
+    saveAiConfig(); initDirectAI(); $("#sheet").close(); toast("AI 설정을 저장했습니다.");
+  };
+  $("#ai-clear").onclick = (e) => {
+    e.preventDefault();
+    aiConfig = { provider: aiConfig.provider, key: "", model: "" };
+    saveAiConfig(); initDirectAI(); $("#sheet").close(); toast("API 키를 지웠습니다.");
+  };
+  $("#sheet").showModal();
+}
+$("#open-ai").onclick = openAiSheet;
+
+// 첫 user 턴(설정 전체)은 시스템 지시로, 나머지는 대화로 나눈다. API들은 'user로 시작, 역할 번갈아'를 요구한다.
+function splitTurns(turns) {
+  const system = turns[0].content;
+  const rest = [];
+  for (const t of turns.slice(1)) {
+    if (rest.length && rest.at(-1).role === t.role) rest.at(-1).content += "\n\n" + t.content;
+    else rest.push({ role: t.role, content: t.content });
+  }
+  if (!rest.length || rest[0].role !== "user") rest.unshift({ role: "user", content: "(이야기를 시작해 주세요.)" });
+  return { system, rest };
+}
+
+function directRequest({ provider, key, model }, system, rest, stream) {
+  model = model || AI_PROVIDERS[provider].model;
+  if (provider === "gemini") {
+    const path = stream ? "streamGenerateContent?alt=sse" : "generateContent";
+    return { url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:${path}`,
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: { systemInstruction: { parts: [{ text: system }] },
+        contents: rest.map((t) => ({ role: t.role === "assistant" ? "model" : "user", parts: [{ text: t.content }] })),
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.9 } } };
+  }
+  if (provider === "claude") {
+    return { url: "https://api.anthropic.com/v1/messages",
+      // 브라우저에서 직접 부를 때 Anthropic이 요구하는 헤더 (키가 브라우저에 있다는 것을 인정하는 표시)
+      headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: { model, max_tokens: 2000, system, messages: rest, stream } };
+  }
+  return { url: "https://api.openai.com/v1/chat/completions",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: { model, messages: [{ role: "system", content: system }, ...rest], max_completion_tokens: 2000, stream } };
+}
+
+// 스트리밍 조각 하나(SSE의 data: 줄)에서 새로 붙은 글자를 꺼낸다.
+function deltaOf(provider, data) {
+  if (provider === "gemini") return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+  if (provider === "claude") return data.type === "content_block_delta" ? data.delta?.text || "" : "";
+  return data.choices?.[0]?.delta?.content || "";
+}
+function wholeOf(provider, data) {
+  if (provider === "gemini") return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+  if (provider === "claude") return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+  return data.choices?.[0]?.message?.content || "";
+}
+
+function httpError(status, body) {
+  const code = status === 401 || status === 403 || /API_KEY_INVALID|invalid.*key|authentication/i.test(body) ? "bad_key"
+    : status === 404 ? "bad_model" : status === 429 ? "rate_limited" : status === 413 ? "prompt_too_large" : "upstream_error";
+  return { code, message: `HTTP ${status}: ${body.slice(0, 200)}` };
+}
+
+function createDirectSample() {
+  const cfg = { ...aiConfig };
+  async function call(turns, { onText, signal } = {}, stream = true) {
+    const { system, rest } = splitTurns(typeof turns === "string"
+      ? [{ role: "user", content: "당신은 요청한 형식의 JSON만 출력하는 도우미입니다." }, { role: "user", content: turns }] : turns);
+    const req = directRequest(cfg, system, rest, stream);
+    let text = "";
+    try {
+      const res = await fetch(req.url, { method: "POST", headers: req.headers, body: JSON.stringify(req.body), signal });
+      if (!res.ok) throw httpError(res.status, await res.text());
+      if (!stream) return { text: wholeOf(cfg.provider, await res.json()), truncated: false };
+      // 응답 본문을 조금씩 읽어서 'data: {...}' 줄마다 글자를 이어 붙인다 (SSE)
+      const reader = res.body.getReader(), dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n"); buf = lines.pop();
+        for (const line of lines) {
+          const s = line.trim();
+          if (!s.startsWith("data:")) continue;
+          const payload = s.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          let data; try { data = JSON.parse(payload); } catch { continue; }
+          if (data.error) throw { code: "upstream_error", message: data.error.message || "stream error" };
+          const d = deltaOf(cfg.provider, data);
+          if (d) { text += d; onText?.({ text, delta: d }); }
+        }
+      }
+      if (!text.trim()) throw { code: "empty_completion", message: "empty" };
+      return { text, truncated: false };
+    } catch (e) {
+      if (e?.name === "AbortError") throw { code: "cancelled", message: "cancelled", text };
+      if (e?.code) throw { ...e, text: text || undefined };
+      throw { code: "upstream_error", message: String(e), text: text || undefined }; // 네트워크 오류 등
+    }
+  }
+  const sample = (turns, opts) => call(turns, opts, true);
+  sample.json = async (prompt) => {
+    const { text } = await call(prompt, {}, false);
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) throw { code: "invalid_json", message: "no json", text };
+    return JSON.parse(m[0]);
+  };
+  return sample;
+}
+
 // ───────── 시작 ─────────
 // 명부·스토리·세계관은 데이터가 페이지 안에 있어 바로 그리고, 저장된 대화와 Claude 연결은 뒤이어 붙인다.
 renderFilters(); renderRoster(); renderPlaces(); renderScenarios(); renderWorld(); renderMe();
 (async () => {
-  window.claude?.use("sample").then((s) => (state.sample = s)).catch(() => {});
+  if (IN_CLAUDE) window.claude.use("sample").then((s) => (state.sample = s)).catch(() => {});
+  else initDirectAI();
   await store.init();
   renderSaveNote();
   try {
