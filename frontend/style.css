@@ -92,6 +92,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 /* 헤일로 아바타: 링이 호감도만큼 찬다 */
 .halo { --size: 44px; --pct: 0; position: relative; width: var(--size); height: var(--size); flex: none; }
 .halo .face { position: absolute; inset: 4px; border-radius: 50%; background: var(--school, var(--blue)); color: #fff; display: grid; place-items: center; font-family: var(--display); font-size: calc(var(--size) * .42); }
+.halo img.face { width: calc(100% - 8px); height: calc(100% - 8px); object-fit: cover; }
 .halo .ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--halo) calc(var(--pct) * 1%), #e6edf4 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%); mask: radial-gradient(circle, transparent 62%, #000 63%); }
 .halo.big { --size: 58px; }
 .halo.bump .ring { animation: halo-glow .9s ease-out; }

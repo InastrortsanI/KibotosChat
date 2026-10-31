@@ -64,6 +64,15 @@ NEW_STUDENTS = [
     ("kei", "케이", "텐도 케이", "Millennium", "초현상특무부", "3월 25일"),
 ]
 
+# 신규 학생의 게임 내 캐릭터 Id (SchaleDB 이미지 주소용). 게임 데이터 CharacterExcelTable 기준.
+NEW_ART = {
+    "niya": 20046, "erika": 20058, "reijo": 10104, "ritsu": 20050, "subaru": 10130, "niko": 10139,
+    "kisaki": 10145, "satsuki": 20040, "rabu": 16018, "yakumo": 20052, "otogi": 16020, "rio": 10133,
+    "hikari": 10117, "nozomi": 10118, "takane": 10131, "aoba": 16017, "rei": 10115, "konoka": 10137,
+    "miyo": 10127, "fuyu": 10128, "rena": 10138, "chiaki": 10107, "seia": 10110, "kurumi": 10140,
+    "eri": 10125, "kanoe": 10126, "nagusa": 10119, "kei": 10135,
+}
+
 # SchaleDB 이후 공개된 이격(뉴스 보도로 확인한 것만)
 EXTRA_OUTFITS = {
     "kikyou": ["수영복"], "renge": ["수영복"], "yukari": ["수영복"], "seia": ["수영복"],
@@ -113,6 +122,7 @@ def main(db_path: str) -> None:
         sid = s["PathName"].lower()
         entry = {
             "id": sid,
+            "art": s["Id"],
             "name": s["Name"],
             "full_name": f"{s['FamilyName']} {s['PersonalName']}" if s["FamilyName"] else s["Name"],
             "school": s["School"],
@@ -131,7 +141,7 @@ def main(db_path: str) -> None:
     for sid, name, full, school, club, birthday in NEW_STUDENTS:
         if sid in known:
             continue
-        entry = {"id": sid, "name": name, "full_name": full, "school": school, "club": club,
+        entry = {"id": sid, "art": NEW_ART.get(sid), "name": name, "full_name": full, "school": school, "club": club,
                  "birthday": birthday, "outfits": EXTRA_OUTFITS.get(sid, [])}
         roster.append(apply_persona(entry, personas.get(sid)))
 

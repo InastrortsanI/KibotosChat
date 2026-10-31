@@ -55,8 +55,11 @@ function schoolOf(st) {
 function halo(st, size = "") {
   const pct = state.bonds[st.id]?.affection ?? 0;
   return `<span class="halo ${size}" data-halo="${esc(st.id)}" style="--school:${schoolOf(st).color};--pct:${pct}">
-    <span class="ring"></span><span class="face" aria-hidden="true">${esc(st.name[0])}</span></span>`;
+    <span class="ring"></span><span class="face" aria-hidden="true">${esc(st.name[0])}</span>${artImg(st)}</span>`;
 }
+// 학생 얼굴: SchaleDB의 공식 아이콘을 링크로만 불러온다. 실패하면 이미지를 지워 이니셜이 보이게 한다.
+const artImg = (st) => !st.art ? ""
+  : `<img class="face" src="https://schaledb.com/images/student/icon/${st.art}.webp" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`;
 
 // AI가 대사 이름을 한국어 대신 id나 영어(Hikari, Tachibana Hikari)로 쓸 때도 학생을 찾는다.
 function findStudentByName(name) {

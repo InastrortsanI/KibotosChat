@@ -1,6 +1,7 @@
 [
  {
   "id": "nonomi",
+  "art": 13004,
   "name": "노노미",
   "full_name": "이자요이 노노미",
   "school": "Abydos",
@@ -23,6 +24,7 @@
  },
  {
   "id": "serika",
+  "art": 13008,
   "name": "세리카",
   "full_name": "쿠로미 세리카",
   "school": "Abydos",
@@ -46,6 +48,7 @@
  },
  {
   "id": "shiroko",
+  "art": 10010,
   "name": "시로코",
   "full_name": "스나오오카미 시로코",
   "school": "Abydos",
@@ -69,6 +72,7 @@
  },
  {
   "id": "shiroko_terror",
+  "art": 10100,
   "name": "시로코*테러",
   "full_name": "스나오오카미 시로코",
   "school": "Abydos",
@@ -90,6 +94,7 @@
  },
  {
   "id": "ayane",
+  "art": 23005,
   "name": "아야네",
   "full_name": "오쿠소라 아야네",
   "school": "Abydos",
@@ -112,6 +117,7 @@
  },
  {
   "id": "hoshino",
+  "art": 10005,
   "name": "호시노",
   "full_name": "타카나시 호시노",
   "school": "Abydos",
@@ -135,6 +141,7 @@
  },
  {
   "id": "misaki",
+  "art": 10041,
   "name": "미사키",
   "full_name": "이마시노 미사키",
   "school": "Arius",
@@ -155,6 +162,7 @@
  },
  {
   "id": "saori",
+  "art": 10048,
   "name": "사오리",
   "full_name": "조마에 사오리",
   "school": "Arius",
@@ -177,6 +185,7 @@
  },
  {
   "id": "subaru",
+  "art": 10130,
   "name": "스바루",
   "full_name": "카케하시 스바루",
   "school": "Arius",
@@ -193,6 +202,7 @@
  },
  {
   "id": "atsuko",
+  "art": 10042,
   "name": "아츠코",
   "full_name": "하카리 아츠코",
   "school": "Arius",
@@ -215,6 +225,7 @@
  },
  {
   "id": "hiyori",
+  "art": 20017,
   "name": "히요리",
   "full_name": "츠치나가 히요리",
   "school": "Arius",
@@ -237,6 +248,7 @@
  },
  {
   "id": "makoto",
+  "art": 20033,
   "name": "마코토",
   "full_name": "하누마 마코토",
   "school": "Gehenna",
@@ -257,6 +269,7 @@
  },
  {
   "id": "megu",
+  "art": 10060,
   "name": "메구",
   "full_name": "시모쿠라 메구",
   "school": "Gehenna",
@@ -277,6 +290,7 @@
  },
  {
   "id": "mutsuki",
+  "art": 13006,
   "name": "무츠키",
   "full_name": "아사기 무츠키",
   "school": "Gehenna",
@@ -299,6 +313,7 @@
  },
  {
   "id": "satsuki",
+  "art": 20040,
   "name": "사츠키",
   "full_name": "쿄고쿠 사츠키",
   "school": "Gehenna",
@@ -314,6 +329,7 @@
  },
  {
   "id": "sena",
+  "art": 20012,
   "name": "세나",
   "full_name": "히무로 세나",
   "school": "Gehenna",
@@ -334,6 +350,7 @@
  },
  {
   "id": "aru",
+  "art": 10000,
   "name": "아루",
   "full_name": "리쿠하치마 아루",
   "school": "Gehenna",
@@ -357,6 +374,7 @@
  },
  {
   "id": "akari",
+  "art": 13002,
   "name": "아카리",
   "full_name": "와니부치 아카리",
   "school": "Gehenna",
@@ -379,6 +397,7 @@
  },
  {
   "id": "ako",
+  "art": 20008,
   "name": "아코",
   "full_name": "아마우 아코",
   "school": "Gehenna",
@@ -401,6 +420,7 @@
  },
  {
   "id": "erika",
+  "art": 20058,
   "name": "에리카",
   "full_name": "하타미 에리카",
   "school": "Gehenna",
@@ -417,6 +437,7 @@
  },
  {
   "id": "iroha",
+  "art": 20016,
   "name": "이로하",
   "full_name": "나츠메 이로하",
   "school": "Gehenna",
@@ -437,6 +458,7 @@
  },
  {
   "id": "ibuki",
+  "art": 16014,
   "name": "이부키",
   "full_name": "탄가 이부키",
   "school": "Gehenna",
@@ -457,6 +479,7 @@
  },
  {
   "id": "iori",
+  "art": 10006,
   "name": "이오리",
   "full_name": "시로미 이오리",
   "school": "Gehenna",
@@ -479,6 +502,7 @@
  },
  {
   "id": "izumi",
+  "art": 10009,
   "name": "이즈미",
   "full_name": "시시도우 이즈미",
   "school": "Gehenna",
@@ -501,6 +525,7 @@
  },
  {
   "id": "juri",
+  "art": 26002,
   "name": "주리",
   "full_name": "우시마키 주리",
   "school": "Gehenna",
@@ -521,6 +546,7 @@
  },
  {
   "id": "junko",
+  "art": 13007,
   "name": "준코",
   "full_name": "아카시 준코",
   "school": "Gehenna",
@@ -543,6 +569,7 @@
  },
  {
   "id": "chinatsu",
+  "art": 26000,
   "name": "치나츠",
   "full_name": "히노미야 치나츠",
   "school": "Gehenna",
@@ -565,6 +592,7 @@
  },
  {
   "id": "chiaki",
+  "art": 10107,
   "name": "치아키",
   "full_name": "모토미야 치아키",
   "school": "Gehenna",
@@ -581,6 +609,7 @@
  },
  {
   "id": "kasumi",
+  "art": 10078,
   "name": "카스미",
   "full_name": "키누가와 카스미",
   "school": "Gehenna",
@@ -601,6 +630,7 @@
  },
  {
   "id": "kayoko",
+  "art": 13005,
   "name": "카요코",
   "full_name": "오니카타 카요코",
   "school": "Gehenna",
@@ -624,6 +654,7 @@
  },
  {
   "id": "kirara",
+  "art": 10093,
   "name": "키라라",
   "full_name": "요자쿠라 키라라",
   "school": "Gehenna",
@@ -644,6 +675,7 @@
  },
  {
   "id": "haruna",
+  "art": 10002,
   "name": "하루나",
   "full_name": "쿠로다테 하루나",
   "school": "Gehenna",
@@ -667,6 +699,7 @@
  },
  {
   "id": "haruka",
+  "art": 16000,
   "name": "하루카",
   "full_name": "이구사 하루카",
   "school": "Gehenna",
@@ -689,6 +722,7 @@
  },
  {
   "id": "fuuka",
+  "art": 23001,
   "name": "후우카",
   "full_name": "아이키요 후우카",
   "school": "Gehenna",
@@ -711,6 +745,7 @@
  },
  {
   "id": "hina",
+  "art": 10004,
   "name": "히나",
   "full_name": "소라사키 히나",
   "school": "Gehenna",
@@ -734,6 +769,7 @@
  },
  {
   "id": "nozomi",
+  "art": 10118,
   "name": "노조미",
   "full_name": "타치바나 노조미",
   "school": "Highlander",
@@ -750,6 +786,7 @@
  },
  {
   "id": "aoba",
+  "art": 16017,
   "name": "아오바",
   "full_name": "우츠미 아오바",
   "school": "Highlander",
@@ -766,6 +803,7 @@
  },
  {
   "id": "hikari",
+  "art": 10117,
   "name": "히카리",
   "full_name": "타치바나 히카리",
   "school": "Highlander",
@@ -782,6 +820,7 @@
  },
  {
   "id": "nagusa",
+  "art": 10119,
   "name": "나구사",
   "full_name": "고료 나구사",
   "school": "Hyakkiyako",
@@ -798,6 +837,7 @@
  },
  {
   "id": "niya",
+  "art": 20046,
   "name": "니야",
   "full_name": "아마치 니야",
   "school": "Hyakkiyako",
@@ -814,6 +854,7 @@
  },
  {
   "id": "renge",
+  "art": 10082,
   "name": "렌게",
   "full_name": "후와 렌게",
   "school": "Hyakkiyako",
@@ -836,6 +877,7 @@
  },
  {
   "id": "mimori",
+  "art": 10034,
   "name": "미모리",
   "full_name": "미즈하 미모리",
   "school": "Hyakkiyako",
@@ -858,6 +900,7 @@
  },
  {
   "id": "michiru",
+  "art": 16009,
   "name": "미치루",
   "full_name": "치도리 미치루",
   "school": "Hyakkiyako",
@@ -878,6 +921,7 @@
  },
  {
   "id": "shizuko",
+  "art": 23006,
   "name": "시즈코",
   "full_name": "카와와 시즈코",
   "school": "Hyakkiyako",
@@ -900,6 +944,7 @@
  },
  {
   "id": "wakamo",
+  "art": 10033,
   "name": "와카모",
   "full_name": "코사카 와카모",
   "school": "Hyakkiyako",
@@ -922,6 +967,7 @@
  },
  {
   "id": "umika",
+  "art": 10090,
   "name": "우미카",
   "full_name": "사토하마 우미카",
   "school": "Hyakkiyako",
@@ -942,6 +988,7 @@
  },
  {
   "id": "yukari",
+  "art": 10081,
   "name": "유카리",
   "full_name": "카데노코지 유카리",
   "school": "Hyakkiyako",
@@ -964,6 +1011,7 @@
  },
  {
   "id": "izuna",
+  "art": 10014,
   "name": "이즈나",
   "full_name": "쿠다 이즈나",
   "school": "Hyakkiyako",
@@ -986,6 +1034,7 @@
  },
  {
   "id": "tsubaki",
+  "art": 13009,
   "name": "츠바키",
   "full_name": "카스가 츠바키",
   "school": "Hyakkiyako",
@@ -1008,6 +1057,7 @@
  },
  {
   "id": "tsukuyo",
+  "art": 10040,
   "name": "츠쿠요",
   "full_name": "오노 츠쿠요",
   "school": "Hyakkiyako",
@@ -1028,6 +1078,7 @@
  },
  {
   "id": "chise",
+  "art": 13001,
   "name": "치세",
   "full_name": "와라쿠 치세",
   "school": "Hyakkiyako",
@@ -1050,6 +1101,7 @@
  },
  {
   "id": "kaede",
+  "art": 20015,
   "name": "카에데",
   "full_name": "이사미 카에데",
   "school": "Hyakkiyako",
@@ -1070,6 +1122,7 @@
  },
  {
   "id": "kaho",
+  "art": 10065,
   "name": "카호",
   "full_name": "쿠와카미 카호",
   "school": "Hyakkiyako",
@@ -1090,6 +1143,7 @@
  },
  {
   "id": "kikyou",
+  "art": 10083,
   "name": "키쿄",
   "full_name": "키류 키쿄",
   "school": "Hyakkiyako",
@@ -1112,6 +1166,7 @@
  },
  {
   "id": "pina",
+  "art": 16004,
   "name": "피나",
   "full_name": "아사히나 피나",
   "school": "Hyakkiyako",
@@ -1132,6 +1187,7 @@
  },
  {
   "id": "neru",
+  "art": 10008,
   "name": "네루",
   "full_name": "미카모 네루",
   "school": "Millennium",
@@ -1154,6 +1210,7 @@
  },
  {
   "id": "noa",
+  "art": 10052,
   "name": "노아",
   "full_name": "우시오 노아",
   "school": "Millennium",
@@ -1174,6 +1231,7 @@
  },
  {
   "id": "rei",
+  "art": 10115,
   "name": "레이",
   "full_name": "노마사 레이",
   "school": "Millennium",
@@ -1190,6 +1248,7 @@
  },
  {
   "id": "rio",
+  "art": 10133,
   "name": "리오",
   "full_name": "츠카츠키 리오",
   "school": "Millennium",
@@ -1205,6 +1264,7 @@
  },
  {
   "id": "maki",
+  "art": 10007,
   "name": "마키",
   "full_name": "코누리 마키",
   "school": "Millennium",
@@ -1225,6 +1285,7 @@
  },
  {
   "id": "momoi",
+  "art": 13011,
   "name": "모모이",
   "full_name": "사이바 모모이",
   "school": "Millennium",
@@ -1247,6 +1308,7 @@
  },
  {
   "id": "midori",
+  "art": 10016,
   "name": "미도리",
   "full_name": "사이바 미도리",
   "school": "Millennium",
@@ -1269,6 +1331,7 @@
  },
  {
   "id": "sumire",
+  "art": 10012,
   "name": "스미레",
   "full_name": "오토하나 스미레",
   "school": "Millennium",
@@ -1289,6 +1352,7 @@
  },
  {
   "id": "aris",
+  "art": 10015,
   "name": "아리스",
   "full_name": "텐도 아리스",
   "school": "Millennium",
@@ -1311,6 +1375,7 @@
  },
  {
   "id": "asuna",
+  "art": 16001,
   "name": "아스나",
   "full_name": "이치노세 아스나",
   "school": "Millennium",
@@ -1333,6 +1398,7 @@
  },
  {
   "id": "akane",
+  "art": 13000,
   "name": "아카네",
   "full_name": "무로카사 아카네",
   "school": "Millennium",
@@ -1355,6 +1421,7 @@
  },
  {
   "id": "eimi",
+  "art": 10001,
   "name": "에이미",
   "full_name": "이즈미모토 에이미",
   "school": "Millennium",
@@ -1377,6 +1444,7 @@
  },
  {
   "id": "utaha",
+  "art": 23004,
   "name": "우타하",
   "full_name": "시라이시 우타하",
   "school": "Millennium",
@@ -1399,6 +1467,7 @@
  },
  {
   "id": "yuuka",
+  "art": 13010,
   "name": "유우카",
   "full_name": "하야세 유우카",
   "school": "Millennium",
@@ -1421,6 +1490,7 @@
  },
  {
   "id": "yuzu",
+  "art": 10018,
   "name": "유즈",
   "full_name": "하나오카 유즈",
   "school": "Millennium",
@@ -1443,6 +1513,7 @@
  },
  {
   "id": "chihiro",
+  "art": 20013,
   "name": "치히로",
   "full_name": "카가미 치히로",
   "school": "Millennium",
@@ -1463,6 +1534,7 @@
  },
  {
   "id": "karin",
+  "art": 20001,
   "name": "카린",
   "full_name": "카쿠다테 카린",
   "school": "Millennium",
@@ -1485,6 +1557,7 @@
  },
  {
   "id": "kei",
+  "art": 10135,
   "name": "케이",
   "full_name": "텐도 케이",
   "school": "Millennium",
@@ -1501,6 +1574,7 @@
  },
  {
   "id": "koyuki",
+  "art": 10063,
   "name": "코유키",
   "full_name": "쿠로사키 코유키",
   "school": "Millennium",
@@ -1521,6 +1595,7 @@
  },
  {
   "id": "kotama",
+  "art": 26001,
   "name": "코타마",
   "full_name": "오토세 코타마",
   "school": "Millennium",
@@ -1543,6 +1618,7 @@
  },
  {
   "id": "kotori",
+  "art": 16002,
   "name": "코토리",
   "full_name": "토요미 코토리",
   "school": "Millennium",
@@ -1565,6 +1641,7 @@
  },
  {
   "id": "toki",
+  "art": 10062,
   "name": "토키",
   "full_name": "아스마 토키",
   "school": "Millennium",
@@ -1587,6 +1664,7 @@
  },
  {
   "id": "hare",
+  "art": 23003,
   "name": "하레",
   "full_name": "오마가리 하레",
   "school": "Millennium",
@@ -1609,6 +1687,7 @@
  },
  {
   "id": "himari",
+  "art": 20020,
   "name": "히마리",
   "full_name": "아케보시 히마리",
   "school": "Millennium",
@@ -1629,6 +1708,7 @@
  },
  {
   "id": "hibiki",
+  "art": 20000,
   "name": "히비키",
   "full_name": "네코즈카 히비키",
   "school": "Millennium",
@@ -1651,6 +1731,7 @@
  },
  {
   "id": "nodoka",
+  "art": 26006,
   "name": "노도카",
   "full_name": "아마미 노도카",
   "school": "RedWinter",
@@ -1673,6 +1754,7 @@
  },
  {
   "id": "marina",
+  "art": 10037,
   "name": "마리나",
   "full_name": "이케쿠라 마리나",
   "school": "RedWinter",
@@ -1693,6 +1775,7 @@
  },
  {
   "id": "meru",
+  "art": 10075,
   "name": "메루",
   "full_name": "히메키 메루",
   "school": "RedWinter",
@@ -1713,6 +1796,7 @@
  },
  {
   "id": "momiji",
+  "art": 13013,
   "name": "모미지",
   "full_name": "아키이즈미 모미지",
   "school": "RedWinter",
@@ -1733,6 +1817,7 @@
  },
  {
   "id": "minori",
+  "art": 20026,
   "name": "미노리",
   "full_name": "야스모리 미노리",
   "school": "RedWinter",
@@ -1753,6 +1838,7 @@
  },
  {
   "id": "shigure",
+  "art": 10055,
   "name": "시구레",
   "full_name": "마요이 시구레",
   "school": "RedWinter",
@@ -1775,6 +1861,7 @@
  },
  {
   "id": "yakumo",
+  "art": 20052,
   "name": "야쿠모",
   "full_name": "아라마키 야쿠모",
   "school": "RedWinter",
@@ -1791,6 +1878,7 @@
  },
  {
   "id": "cherino",
+  "art": 10017,
   "name": "체리노",
   "full_name": "렌카와 체리노",
   "school": "RedWinter",
@@ -1813,6 +1901,7 @@
  },
  {
   "id": "takane",
+  "art": 10131,
   "name": "타카네",
   "full_name": "미요시 타카네",
   "school": "RedWinter",
@@ -1829,6 +1918,7 @@
  },
  {
   "id": "tomoe",
+  "art": 16007,
   "name": "토모에",
   "full_name": "사시로 토모에",
   "school": "RedWinter",
@@ -1849,6 +1939,7 @@
  },
  {
   "id": "niko",
+  "art": 10139,
   "name": "니코",
   "full_name": "요시노 니코",
   "school": "SRT",
@@ -1865,6 +1956,7 @@
  },
  {
   "id": "moe",
+  "art": 20018,
   "name": "모에",
   "full_name": "카제쿠라 모에",
   "school": "SRT",
@@ -1887,6 +1979,7 @@
  },
  {
   "id": "miyako",
+  "art": 10038,
   "name": "미야코",
   "full_name": "츠키유키 미야코",
   "school": "SRT",
@@ -1909,6 +2002,7 @@
  },
  {
   "id": "miyu",
+  "art": 10039,
   "name": "미유",
   "full_name": "카스미자와 미유",
   "school": "SRT",
@@ -1931,6 +2025,7 @@
  },
  {
   "id": "saki",
+  "art": 20014,
   "name": "사키",
   "full_name": "소라이 사키",
   "school": "SRT",
@@ -1953,6 +2048,7 @@
  },
  {
   "id": "otogi",
+  "art": 16020,
   "name": "오토기",
   "full_name": "텐진야마 오토기",
   "school": "SRT",
@@ -1969,6 +2065,7 @@
  },
  {
   "id": "kurumi",
+  "art": 10140,
   "name": "쿠루미",
   "full_name": "타카쿠라 쿠루미",
   "school": "SRT",
@@ -1985,6 +2082,7 @@
  },
  {
   "id": "reijo",
+  "art": 10104,
   "name": "레이죠",
   "full_name": "카야마 레이죠",
   "school": "Shanhaijing",
@@ -2001,6 +2099,7 @@
  },
  {
   "id": "rumi",
+  "art": 10069,
   "name": "루미",
   "full_name": "아케시로 루미",
   "school": "Shanhaijing",
@@ -2021,6 +2120,7 @@
  },
  {
   "id": "mina",
+  "art": 10070,
   "name": "미나",
   "full_name": "코노에 미나",
   "school": "Shanhaijing",
@@ -2041,6 +2141,7 @@
  },
  {
   "id": "saya",
+  "art": 20002,
   "name": "사야",
   "full_name": "야쿠시 사야",
   "school": "Shanhaijing",
@@ -2063,6 +2164,7 @@
  },
  {
   "id": "shun",
+  "art": 10011,
   "name": "슌",
   "full_name": "스노하라 슌",
   "school": "Shanhaijing",
@@ -2086,6 +2188,7 @@
  },
  {
   "id": "kokona",
+  "art": 10050,
   "name": "코코나",
   "full_name": "스노하라 코코나",
   "school": "Shanhaijing",
@@ -2106,6 +2209,7 @@
  },
  {
   "id": "kisaki",
+  "art": 10145,
   "name": "키사키",
   "full_name": "류우게 키사키",
   "school": "Shanhaijing",
@@ -2124,6 +2228,7 @@
  },
  {
   "id": "nagisa",
+  "art": 20024,
   "name": "나기사",
   "full_name": "키리후지 나기사",
   "school": "Trinity",
@@ -2146,6 +2251,7 @@
  },
  {
   "id": "natsu",
+  "art": 10029,
   "name": "나츠",
   "full_name": "유토리 나츠",
   "school": "Trinity",
@@ -2166,6 +2272,7 @@
  },
  {
   "id": "rabu",
+  "art": 16018,
   "name": "라브",
   "full_name": "코마카제 라브",
   "school": "Trinity",
@@ -2182,6 +2289,7 @@
  },
  {
   "id": "reisa",
+  "art": 10068,
   "name": "레이사",
   "full_name": "우자와 레이사",
   "school": "Trinity",
@@ -2202,6 +2310,7 @@
  },
  {
   "id": "mari",
+  "art": 23008,
   "name": "마리",
   "full_name": "이오치 마리",
   "school": "Trinity",
@@ -2224,6 +2333,7 @@
  },
  {
   "id": "mashiro",
+  "art": 20003,
   "name": "마시로",
   "full_name": "시즈야마 마시로",
   "school": "Trinity",
@@ -2246,6 +2356,7 @@
  },
  {
   "id": "mine",
+  "art": 10058,
   "name": "미네",
   "full_name": "아오모리 미네",
   "school": "Trinity",
@@ -2266,6 +2377,7 @@
  },
  {
   "id": "mika",
+  "art": 10059,
   "name": "미카",
   "full_name": "미소노 미카",
   "school": "Trinity",
@@ -2288,6 +2400,7 @@
  },
  {
   "id": "sakurako",
+  "art": 10061,
   "name": "사쿠라코",
   "full_name": "우타즈미 사쿠라코",
   "school": "Trinity",
@@ -2308,6 +2421,7 @@
  },
  {
   "id": "serina",
+  "art": 26003,
   "name": "세리나",
   "full_name": "스미 세리나",
   "school": "Trinity",
@@ -2330,6 +2444,7 @@
  },
  {
   "id": "seia",
+  "art": 10110,
   "name": "세이아",
   "full_name": "유리조노 세이아",
   "school": "Trinity",
@@ -2347,6 +2462,7 @@
  },
  {
   "id": "suzumi",
+  "art": 16003,
   "name": "스즈미",
   "full_name": "모리즈키 스즈미",
   "school": "Trinity",
@@ -2367,6 +2483,7 @@
  },
  {
   "id": "shimiko",
+  "art": 26004,
   "name": "시미코",
   "full_name": "엔도우 시미코",
   "school": "Trinity",
@@ -2387,6 +2504,7 @@
  },
  {
   "id": "airi",
+  "art": 23000,
   "name": "아이리",
   "full_name": "쿠리무라 아이리",
   "school": "Trinity",
@@ -2409,6 +2527,7 @@
  },
  {
   "id": "azusa",
+  "art": 10019,
   "name": "아즈사",
   "full_name": "시라스 아즈사",
   "school": "Trinity",
@@ -2431,6 +2550,7 @@
  },
  {
   "id": "yoshimi",
+  "art": 26005,
   "name": "요시미",
   "full_name": "이바라기 요시미",
   "school": "Trinity",
@@ -2453,6 +2573,7 @@
  },
  {
   "id": "ui",
+  "art": 10035,
   "name": "우이",
   "full_name": "코제키 우이",
   "school": "Trinity",
@@ -2475,6 +2596,7 @@
  },
  {
   "id": "ichika",
+  "art": 10077,
   "name": "이치카",
   "full_name": "나카마사 이치카",
   "school": "Trinity",
@@ -2497,6 +2619,7 @@
  },
  {
   "id": "tsurugi",
+  "art": 10013,
   "name": "츠루기",
   "full_name": "켄자키 츠루기",
   "school": "Trinity",
@@ -2519,6 +2642,7 @@
  },
  {
   "id": "kazusa",
+  "art": 10049,
   "name": "카즈사",
   "full_name": "쿄야마 카즈사",
   "school": "Trinity",
@@ -2541,6 +2665,7 @@
  },
  {
   "id": "koharu",
+  "art": 10020,
   "name": "코하루",
   "full_name": "시모에 코하루",
   "school": "Trinity",
@@ -2563,6 +2688,7 @@
  },
  {
   "id": "hanae",
+  "art": 23002,
   "name": "하나에",
   "full_name": "아사가오 하나에",
   "school": "Trinity",
@@ -2585,6 +2711,7 @@
  },
  {
   "id": "hanako",
+  "art": 23007,
   "name": "하나코",
   "full_name": "우라와 하나코",
   "school": "Trinity",
@@ -2607,6 +2734,7 @@
  },
  {
   "id": "hasumi",
+  "art": 13003,
   "name": "하스미",
   "full_name": "하네카와 하스미",
   "school": "Trinity",
@@ -2630,6 +2758,7 @@
  },
  {
   "id": "hinata",
+  "art": 10036,
   "name": "히나타",
   "full_name": "와카바 히나타",
   "school": "Trinity",
@@ -2652,6 +2781,7 @@
  },
  {
   "id": "hifumi",
+  "art": 10003,
   "name": "히후미",
   "full_name": "아지타니 히후미",
   "school": "Trinity",
@@ -2674,6 +2804,7 @@
  },
  {
   "id": "kanna",
+  "art": 20023,
   "name": "칸나",
   "full_name": "오가타 칸나",
   "school": "Valkyrie",
@@ -2696,6 +2827,7 @@
  },
  {
   "id": "konoka",
+  "art": 10137,
   "name": "코노카",
   "full_name": "시마 코노카",
   "school": "Valkyrie",
@@ -2712,6 +2844,7 @@
  },
  {
   "id": "kirino",
+  "art": 13012,
   "name": "키리노",
   "full_name": "나카츠카사 키리노",
   "school": "Valkyrie",
@@ -2734,6 +2867,7 @@
  },
  {
   "id": "fubuki",
+  "art": 16008,
   "name": "후부키",
   "full_name": "네무가키 후부키",
   "school": "Valkyrie",
@@ -2756,6 +2890,7 @@
  },
  {
   "id": "rena",
+  "art": 10138,
   "name": "레나",
   "full_name": "키누이 레나",
   "school": "WildHunt",
@@ -2772,6 +2907,7 @@
  },
  {
   "id": "ritsu",
+  "art": 20050,
   "name": "리츠",
   "full_name": "우스바 리츠",
   "school": "WildHunt",
@@ -2788,6 +2924,7 @@
  },
  {
   "id": "miyo",
+  "art": 10127,
   "name": "미요",
   "full_name": "사쿠라이 미요",
   "school": "WildHunt",
@@ -2804,6 +2941,7 @@
  },
  {
   "id": "eri",
+  "art": 10125,
   "name": "에리",
   "full_name": "시라오 에리",
   "school": "WildHunt",
@@ -2820,6 +2958,7 @@
  },
  {
   "id": "kanoe",
+  "art": 10126,
   "name": "카노에",
   "full_name": "이타가키 카노에",
   "school": "WildHunt",
@@ -2836,6 +2975,7 @@
  },
  {
   "id": "fuyu",
+  "art": 10128,
   "name": "후유",
   "full_name": "와카사 후유",
   "school": "WildHunt",
