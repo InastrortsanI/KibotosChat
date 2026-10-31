@@ -925,7 +925,7 @@ async function runTurn(kind) {
     // 직접 호출(GitHub Pages)일 때만: 모델을 바꿔 다시 시도하는 중이라는 것을 말풍선에 보여 준다
     if (!IN_CLAUDE) opts.onStatus = (msg) => { const live = $("#live"); if (live) live.innerHTML = `<span class="status-line">${esc(msg)}</span>`; };
     const { text: raw, truncated, fallback } = await state.sample(buildTurns(room), opts);
-    if (fallback) toast(`${fallback.from} 사용 한도 때문에 ${fallback.to}(으)로 답했습니다. 10분 뒤 원래 모델로 돌아갑니다.`);
+    if (fallback) toast(`${fallback.from} 사용 한도 때문에 ${fallback.to}(으)로 바꿨습니다. 앞으로 이 모델을 계속 씁니다. 원래 모델로 돌아가려면 'AI 설정'에서 저장하세요.`);
     const { text, changes, scene } = parseReply(raw);
     const applied = applyAffection(room, changes);
     const msg = { role: "assistant", content: text || "*(응답이 비어 있습니다. 다시 생성해 보세요.)*", affection: applied };
@@ -1025,7 +1025,8 @@ const AI_PROVIDERS = {
   claude: { label: "Claude (Anthropic)", model: "claude-sonnet-5-5", keyHelp: "console.anthropic.com 에서 발급 (유료)" },
   openai: { label: "OpenAI", model: "gpt-6-luna", keyHelp: "platform.openai.com 에서 발급 (유료)" },
 };
-let aiConfig = { provider: "gemini", key: "", model: "" };
+// active: 한도 때문에 바꿔 탄 모델. 한 번 바꾸면 'AI 설정'을 다시 저장하기 전까지 계속 이 모델을 쓴다.
+let aiConfig = { provider: "gemini", key: "", model: "", active: "" };
 
 function loadAiConfig() {
   try { aiConfig = { ...aiConfig, ...JSON.parse(localStorage.getItem("kc:ai") || "{}") }; } catch { /* 저장소를 못 쓰면 이번 방문 동안만 기억 */ }
@@ -1038,7 +1039,11 @@ function initDirectAI() {
   document.querySelectorAll(".web-only").forEach((el) => (el.hidden = false));
   $("#tier").hidden = true; // 응답 방식(기본/빠르게)은 claude.ai 전용. 여기서는 'AI 설정'의 모델이 결정한다.
   state.sample = aiConfig.key ? createDirectSample() : null;
-  $("#ai-status").textContent = aiConfig.key ? `${AI_PROVIDERS[aiConfig.provider].label.split(" ")[0]} 사용 중` : "AI 미설정";
+  renderAiStatus();
+}
+function renderAiStatus() {
+  const model = aiConfig.active || aiConfig.model || AI_PROVIDERS[aiConfig.provider].model;
+  $("#ai-status").textContent = aiConfig.key ? `${model} 사용 중` : "AI 미설정";
 }
 
 function openAiSheet() {
@@ -1135,10 +1140,9 @@ const FIRST_DATA_MS = 30 * 1000;      // 첫 응답이 30초 안에 안 오면 �
 const IDLE_MS = 30 * 1000;            // 답장 도중 30초 동안 아무것도 안 오면 끊긴 것으로 본다
 // 단종되어 다른 모델로 대신 처리되는 이름. 한도에 걸린 모델과 같은 모델로 연결되므로 대체 후보에서 뺀다.
 const RETIRED_MODELS = new Set(["gemini-3.7-flash"]);
-const COOLDOWN_MS = 10 * 60 * 1000;   // 한도에 걸린 모델은 10분 동안 건너뛴다
+const COOLDOWN_MS = 10 * 60 * 1000;   // 대체 모델을 찾을 때, 방금 한도에 걸린 모델은 10분 동안 후보에서 뺀다
 const MAX_SWITCHES = 3;               // 한 번 보낼 때 최대 3번까지만 바꿔 본다
 const cooldown = {};                  // 모델 이름 → 다시 써도 되는 시각
-let lastGoodModel = "";               // 마지막으로 성공한 대체 모델 (기본 모델이 쉬는 동안 먼저 쓴다)
 const STATIC_MODELS = {               // 모델 목록을 못 받아 올 때 쓰는 예비 후보
   gemini: ["gemini-3.6-flash", "gemini-3.5-flash"],
   claude: ["claude-sonnet-5-5", "claude-haiku-5-5"],
@@ -1185,17 +1189,22 @@ function createDirectSample() {
   const cfg = { ...aiConfig };
   const primary = cfg.model || AI_PROVIDERS[cfg.provider].model;
 
-  // 기본 모델이 쉬는 중이면 최근에 성공한 대체 모델부터 쓴다
-  const startModel = () => (cooldown[primary] > Date.now() && lastGoodModel && !(cooldown[lastGoodModel] > Date.now())) ? lastGoodModel : primary;
+  // 이전에 바꿔 탄 모델이 있으면 원래 모델로 돌아가지 않고 그 모델을 계속 쓴다
+  const startModel = () => aiConfig.active || primary;
 
   async function withFallback(turns, opts = {}, stream = true) {
     const tried = new Set();
-    let model = startModel();
+    const started = startModel();
+    let model = started;
     for (let switches = 0; ; switches++) {
       tried.add(model);
       try {
         const result = await call(model, turns, opts, stream);
-        if (model !== primary) { lastGoodModel = model; result.fallback = { from: primary, to: model }; }
+        if (model !== started) { // 이번에 실제로 모델을 바꿨을 때만: 바꾼 모델을 저장해 두고 알린다
+          aiConfig.active = model === primary ? "" : model;
+          saveAiConfig(); renderAiStatus();
+          result.fallback = { from: started, to: model };
+        }
         return result;
       } catch (e) {
         // 답장이 이미 써지기 시작했거나(섞이면 안 됨), 전환할 오류가 아니거나, 사용자가 고른 모델 이름 자체가 틀린 경우는 그대로 알린다
