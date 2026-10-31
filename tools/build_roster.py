@@ -89,6 +89,8 @@ def apply_persona(entry: dict, persona: dict | None) -> dict:
             entry[key] = value
     # 말투가 비어 있으면 자료가 부족한 학생으로 표시 → 프롬프트에서 '지어내지 말라'는 안내가 붙는다.
     entry["detail"] = "full" if entry.get("speech") else "basic"
+    # 선생님에게 쓰는 높임. 자료가 없으면 더 안전한 존댓말을 기본값으로 둔다.
+    entry["honorific"] = persona.get("h", "존댓말")
     return entry
 
 
