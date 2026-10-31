@@ -1140,7 +1140,7 @@ function httpError(status, body) {
 
 // ───────── 한도에 걸리면 다른 모델로 자동 전환 ─────────
 const FALLBACK_CODES = new Set(["rate_limited", "overloaded", "bad_model", "timeout"]); // 이 오류들이면 다음 모델로 넘어간다
-const FIRST_DATA_MS = 60 * 1000;      // 첫 응답이 60초 안에 안 오면 포기하고 다음 모델로
+const FIRST_DATA_MS = 30 * 1000;      // 첫 응답이 30초 안에 안 오면 포기하고 다음 모델로
 const IDLE_MS = 30 * 1000;            // 답장 도중 30초 동안 아무것도 안 오면 끊긴 것으로 본다
 // 단종되어 다른 모델로 대신 처리되는 이름. 한도에 걸린 모델과 같은 모델로 연결되므로 대체 후보에서 뺀다.
 const RETIRED_MODELS = new Set(["gemini-3.7-flash"]);
