@@ -1,0 +1,989 @@
+<title>키보토스 채팅</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gothic+A1:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 레이아웃: 왼쪽 메뉴(모바일은 서랍) + 오른쪽 화면. 하늘색 바탕에 학교 색 헤일로 */
+:root {
+  --bg: #eef5fb; --paper: #ffffff; --ink: #1b2a4a; --ink-soft: #5b6b86; --line: #d7e3ef;
+  --blue: #2a9df4; --blue-deep: #1478c8; --on-blue: #ffffff; --halo: #f2c230; --halo-track: #e3ebf3;
+  --hover: #f5f9fe; --scrim: rgba(27, 42, 74, .45); --danger: #c93a52; --gold-text: #8a6a00;
+  --radius-sm: 6px; --radius-lg: 14px;
+  --display: "Do Hyeon", "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1828; --paper: #16233a; --ink: #e4ecf8; --ink-soft: #9badc9; --line: #283a58;
+  --blue: #3aa8ff; --blue-deep: #8ccaff; --on-blue: #06223f; --halo: #f2c230; --halo-track: #2a3b57;
+  --hover: #1c2c47; --scrim: rgba(0, 0, 0, .55); --danger: #ff7a8f; --gold-text: #f2c230; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1828; --paper: #16233a; --ink: #e4ecf8; --ink-soft: #9badc9; --line: #283a58;
+  --blue: #3aa8ff; --blue-deep: #8ccaff; --on-blue: #06223f; --halo: #f2c230; --halo-track: #2a3b57;
+  --hover: #1c2c47; --scrim: rgba(0, 0, 0, .55); --danger: #ff7a8f; --gold-text: #f2c230; color-scheme: dark }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.65 var(--body); overflow: hidden; }
+h1, h2, .brand { font-family: var(--display); font-weight: 400; margin: 0; text-wrap: balance; }
+h1 { font-size: 1.9rem; line-height: 1.2; }
+.muted { color: var(--ink-soft); }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+.btn { font: 500 .95rem var(--body); border: 0; cursor: pointer; padding: .55rem 1.1rem; border-radius: var(--radius-sm); color: var(--ink); background: transparent; }
+.btn.primary { background: var(--blue); color: var(--on-blue); transform: skewX(-10deg); white-space: nowrap; }
+.btn.primary:hover { background: var(--blue-deep); }
+.btn.ghost { border: 1px solid var(--line); background: var(--paper); }
+.btn.ghost:hover { border-color: var(--blue); }
+.btn.link { color: var(--blue-deep); padding: .3rem .2rem; }
+.btn:disabled { opacity: .5; cursor: default; }
+.icon-btn { border: 0; background: none; font-size: 1.2rem; cursor: pointer; color: var(--ink-soft); padding: .3rem .5rem; }
+
+input, textarea, select { font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .55rem .7rem; width: 100%; }
+input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: none; }
+
+.app { display: grid; grid-template-columns: 272px 1fr; height: 100%; }
+.sidebar { background: var(--paper); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; padding: 1rem; gap: .8rem; }
+.sidebar-head { display: flex; justify-content: space-between; align-items: center; }
+.brand.small { font-size: 1.35rem; color: var(--blue-deep); }
+.tabs { display: grid; gap: .2rem; }
+.tab { text-align: left; border: 0; background: none; font: 500 1rem var(--body); padding: .5rem .7rem; border-radius: var(--radius-sm); cursor: pointer; color: var(--ink); }
+.tab.active { background: var(--bg); color: var(--blue-deep); box-shadow: inset 3px 0 var(--blue); }
+.side-title { font-size: 1rem; color: var(--ink-soft); margin-top: .4rem; }
+.room-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; display: grid; align-content: start; gap: 2px; }
+.room-list button { width: 100%; text-align: left; border: 0; background: none; padding: .5rem .6rem; border-radius: var(--radius-sm); cursor: pointer; font: inherit; color: inherit; display: grid; }
+.room-list button:hover, .room-list button.active { background: var(--bg); }
+.room-meta { font-size: .78rem; color: var(--ink-soft); }
+.sidebar-foot { display: grid; gap: .2rem; border-top: 1px solid var(--line); padding-top: .6rem; font-size: .85rem; }
+.sidebar-foot .row { display: flex; justify-content: space-between; align-items: center; }
+.save-note { font-size: .76rem; color: var(--ink-soft); }
+
+.main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.view { flex: 1; overflow-y: auto; padding-block: 2rem; padding-inline: clamp(16px, 4vw, 48px); }
+.view-head { display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1rem; }
+.view-head input { max-width: 320px; }
+.topbar { display: none; align-items: center; gap: .5rem; padding: .6rem 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.topbar .brand { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.only-mobile { display: none; }
+
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.2rem; }
+.chip { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: .3rem .8rem; font: inherit; font-size: .85rem; cursor: pointer; color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.roster { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: .5rem; }
+.roster button { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: .8rem; align-items: center; text-align: left; font: inherit; color: inherit; background: var(--paper); border: 0; border-left: 4px solid var(--school, var(--line)); border-radius: var(--radius-sm); padding: .6rem .8rem; cursor: pointer; }
+.roster button:hover { background: var(--hover); }
+.who { min-width: 0; }
+.who strong { display: block; font-family: var(--display); font-weight: 400; font-size: 1.15rem; }
+.who span { font-size: .8rem; color: var(--ink-soft); }
+.tag-basic { font-family: var(--body); font-size: .7rem; color: var(--ink-soft); border: 1px dashed var(--line); border-radius: 4px; padding: 0 .3rem; margin-left: .3rem; vertical-align: middle; }
+
+/* 헤일로 아바타: 노란 링이 호감도만큼 찬다 */
+.halo { --size: 44px; --pct: 0; position: relative; width: var(--size); height: var(--size); flex: none; display: inline-block; }
+.halo .face { position: absolute; inset: 4px; border-radius: 50%; background: var(--school, var(--blue)); color: #fff; display: grid; place-items: center; font-family: var(--display); font-size: calc(var(--size) * .42); }
+.halo .ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--halo) calc(var(--pct) * 1%), var(--halo-track) 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%); mask: radial-gradient(circle, transparent 62%, #000 63%); }
+.halo.big { --size: 58px; }
+.halo.bump .ring { animation: glow .9s ease-out; }
+@keyframes glow { 40% { filter: drop-shadow(0 0 7px var(--halo)); } }
+
+.scenarios { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .8rem; max-width: 760px; }
+.scenarios button { width: 100%; text-align: left; font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1rem 1.2rem; cursor: pointer; display: grid; gap: .3rem; }
+.scenarios button:hover { border-color: var(--blue); }
+.scenarios h2 { font-size: 1.35rem; }
+.loc { font-size: .82rem; color: var(--blue-deep); }
+
+.world { max-width: 68ch; display: grid; gap: 1.6rem; }
+.world h2 { font-size: 1.4rem; margin-bottom: .3rem; }
+.world p { margin: 0; }
+
+.view.chat { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.chat-head { display: flex; align-items: center; gap: .8rem; padding-block: .8rem; padding-inline: clamp(16px, 3vw, 32px); background: var(--paper); border-bottom: 1px solid var(--line); }
+.chat-halos { display: flex; }
+.chat-halos .halo + .halo { margin-left: -12px; }
+.chat-title { flex: 1; min-width: 0; }
+.chat-title h1 { font-size: 1.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-title p { margin: 0; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-head select { width: auto; max-width: 150px; font-size: .85rem; }
+
+.messages-wrap { flex: 1; min-height: 0; position: relative; display: flex; }
+.jump { position: absolute; right: clamp(16px, 4vw, 48px); bottom: 12px; border: 1px solid var(--line); background: var(--paper); color: var(--blue-deep); border-radius: 999px; padding: .35rem .9rem; font: 500 .85rem var(--body); cursor: pointer; }
+.scene-line { font-size: .8rem; color: var(--ink-soft); border-top: 1px dashed var(--line); padding-top: .4rem; margin-top: .2rem; }
+.messages { list-style: none; margin: 0; flex: 1; overflow-y: auto; padding-block: 1.5rem; padding-inline: clamp(16px, 4vw, 48px); display: flex; flex-direction: column; gap: .9rem; }
+.msg { max-width: 68ch; min-width: 0; }
+.msg.user { align-self: flex-end; background: var(--blue); color: var(--on-blue); padding: .6rem .9rem; border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg); white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.assistant { align-self: flex-start; display: grid; gap: .55rem; width: 100%; }
+.narr { color: var(--ink-soft); font-style: italic; margin: 0; }
+.line { display: grid; grid-template-columns: auto 1fr; gap: .6rem; align-items: start; }
+.line .halo { --size: 34px; }
+.bubble { background: var(--paper); border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg); padding: .5rem .85rem; border: 1px solid var(--line); min-width: 0; overflow-wrap: anywhere; }
+.bubble b { display: block; font-family: var(--display); font-weight: 400; font-size: 1rem; color: var(--school, var(--blue-deep)); }
+.plain { margin: 0; overflow-wrap: anywhere; }
+.affection-note { font-size: .78rem; color: var(--gold-text); }
+.status-line { color: var(--ink-soft); font-style: italic; }
+.error-line { color: var(--danger); font-size: .88rem; }
+.empty { color: var(--ink-soft); }
+
+.composer { background: var(--paper); border-top: 1px solid var(--line); padding-block: .7rem 1rem; padding-inline: clamp(16px, 3vw, 32px); display: grid; gap: .5rem; }
+.composer-tools { display: flex; gap: .4rem; flex-wrap: wrap; }
+.composer-tools .btn { font-size: .82rem; padding: .3rem .7rem; }
+.format-tools { display: flex; gap: .4rem; margin-left: auto; }
+.format-tools .btn { min-width: 2.6rem; font-weight: 700; }
+.msg[data-i] { cursor: pointer; }
+.msg.selected.user { box-shadow: 0 0 0 2px var(--blue-deep); }
+.msg.selected.assistant { box-shadow: -3px 0 0 var(--blue); padding-left: .5rem; }
+.msg-bar { display: flex; align-items: center; gap: .4rem; background: var(--bg); border-radius: var(--radius-sm); padding: .35rem .5rem; }
+.msg-bar span { flex: 1; min-width: 0; font-size: .85rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-bar .btn { font-size: .82rem; padding: .3rem .8rem; }
+.btn.danger { border: 1px solid var(--danger); background: var(--paper); color: var(--danger); }
+.composer-row { display: flex; gap: .6rem; align-items: end; }
+.composer-row textarea { resize: none; }
+
+.sheet { border: 0; padding: 0; border-radius: var(--radius-lg); width: min(560px, calc(100% - 32px)); max-height: calc(100% - 32px); color: var(--ink); background: var(--paper); }
+.sheet::backdrop { background: var(--scrim); }
+.sheet-inner { padding: 1.5rem; display: grid; gap: 1rem; }
+.sheet-top { display: flex; gap: 1rem; align-items: center; }
+.sheet-top h2 { font-size: 1.8rem; }
+.sheet-top p { margin: 0; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: .2rem .9rem; margin: 0; font-size: .9rem; }
+.facts dt { color: var(--ink-soft); }
+.facts dd { margin: 0; }
+.sheet label { display: grid; gap: .3rem; font-size: .9rem; }
+.sheet-actions { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
+.pick { display: flex; flex-wrap: wrap; gap: .35rem; max-height: 200px; overflow-y: auto; padding: .2rem; }
+
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: .6rem 1rem; border-radius: var(--radius-sm); font-size: .9rem; max-width: calc(100% - 32px); z-index: 30; }
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; }
+  .only-mobile { display: initial; }
+  .topbar { display: flex; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(300px, 85vw); z-index: 20; transform: translateX(-100%); transition: transform .2s;
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px)); padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); padding-left: calc(1rem + env(safe-area-inset-left, 0px)); }
+  .sidebar.open { transform: none; box-shadow: 0 0 0 100vmax var(--scrim); }
+  .view { padding-block: 1.2rem; }
+  h1 { font-size: 1.6rem; }
+  .chat-head { gap: .5rem; }
+  .chat-head .halo.big { --size: 40px; }
+  .chat-halos .halo:nth-child(n+3) { display: none; }
+  .chat-title h1 { display: none; }
+  .chat-head select { max-width: 92px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div id="app" class="app">
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-head">
+      <span class="brand small">키보토스 채팅</span>
+      <button class="icon-btn only-mobile" id="close-sidebar" aria-label="메뉴 닫기">✕</button>
+    </div>
+    <nav class="tabs" aria-label="메뉴">
+      <button data-view="free" class="tab">자유 모드</button>
+      <button data-view="roster" class="tab active">학생 명부</button>
+      <button data-view="stories" class="tab">스토리</button>
+      <button data-view="world" class="tab">세계관</button>
+    </nav>
+    <h2 class="side-title">내 대화</h2>
+    <ul id="room-list" class="room-list"><li class="empty">대화 목록을 불러오는 중…</li></ul>
+    <div class="sidebar-foot">
+      <div class="row"><span id="me-name" class="muted">선생님</span><button class="btn link" id="open-settings">이름 바꾸기</button></div>
+      <span id="save-note" class="save-note"></span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="open-sidebar" aria-label="메뉴 열기">☰</button>
+      <span class="brand small" id="topbar-title">키보토스 채팅</span>
+    </header>
+
+    <section id="view-roster" class="view">
+      <div class="view-head">
+        <h1>학생 명부</h1>
+        <input id="search" type="search" placeholder="이름, 학교, 동아리로 찾기" aria-label="학생 검색">
+      </div>
+      <div id="school-filter" class="chips" role="group" aria-label="학교 필터"></div>
+      <ul id="roster" class="roster"></ul>
+    </section>
+
+    <section id="view-free" class="view" hidden>
+      <div class="view-head"><h1>자유 모드</h1></div>
+      <p class="muted">키보토스를 돌아다니며 그곳에 있는 학생들을 만납니다. 만난 학생은 누구든 호감도가 쌓입니다. 시작할 곳을 고르세요.</p>
+      <ul id="place-list" class="scenarios"></ul>
+    </section>
+
+    <section id="view-stories" class="view" hidden>
+      <div class="view-head"><h1>스토리</h1></div>
+      <p class="muted">여러 학생이 함께 등장하는 이야기입니다. 시나리오를 고르고 함께할 학생을 정하세요.</p>
+      <ul id="scenario-list" class="scenarios"></ul>
+    </section>
+
+    <section id="view-world" class="view" hidden>
+      <div class="view-head"><h1>세계관</h1></div>
+      <div id="world" class="world"></div>
+    </section>
+
+    <section id="view-chat" class="view chat" hidden>
+      <header class="chat-head">
+        <div id="chat-halos" class="chat-halos"></div>
+        <div class="chat-title"><h1 id="chat-title"></h1><p id="chat-sub" class="muted"></p></div>
+        <select id="tier" aria-label="응답 방식">
+          <option value="default">기본</option>
+          <option value="quick">빠르게</option>
+          <option value="complex">깊이 있게</option>
+        </select>
+        <button class="icon-btn" id="delete-room" aria-label="대화 삭제" title="대화 삭제">🗑</button>
+      </header>
+      <div class="messages-wrap">
+        <ol id="messages" class="messages" aria-live="polite"></ol>
+        <button type="button" class="jump" id="jump" hidden>↓ 아래로</button>
+      </div>
+      <form id="composer" class="composer">
+        <div id="msg-bar" class="msg-bar" hidden>
+          <span id="msg-bar-label">메시지를 선택했습니다</span>
+          <button type="button" class="btn ghost" id="msg-cancel">취소</button>
+          <button type="button" class="btn danger" id="msg-del">삭제</button>
+        </div>
+        <div class="composer-tools">
+          <button type="button" class="btn ghost" id="btn-continue">이어서</button>
+          <button type="button" class="btn ghost" id="btn-regen">다시 생성</button>
+          <button type="button" class="btn ghost" id="btn-undo">되돌리기</button>
+          <div class="format-tools" role="group" aria-label="입력 도우미">
+            <button type="button" class="btn ghost" data-wrap='"' aria-label="대사 따옴표 넣기" title="대사: 따옴표로 감싸기">" "</button>
+            <button type="button" class="btn ghost" data-wrap="*" aria-label="행동 별표 넣기" title="행동: 별표로 감싸기">* *</button>
+          </div>
+        </div>
+        <div class="composer-row">
+          <textarea id="input" rows="2" maxlength="2000" placeholder="대사를 쓰거나 *행동*을 별표로 감싸 쓰세요"></textarea>
+          <button class="btn primary" type="submit" id="send">보내기</button>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<dialog id="sheet" class="sheet"><form method="dialog" class="sheet-inner" id="sheet-body"></form></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+"use strict";
+// 세계관·학교·학생·시나리오 데이터. tools/build_artifact.py 가 data/*.json 을 이 자리에 넣는다.
+const DATA = /*__DATA__*/null;
+
+const $ = (s) => document.querySelector(s);
+const state = {
+  students: Object.fromEntries(DATA.students.map((s) => [s.id, s])),
+  scenarios: DATA.scenarios, schools: DATA.schools, world: DATA.world,
+  profile: { sensei_name: "" }, bonds: {}, rooms: [], room: null,
+  schoolFilter: "", busy: false, ctl: null, sample: null,
+};
+
+// ───────── 저장소: claude.ai 개인 공간(db) → 안 되면 이 기기(localStorage) → 안 되면 메모리 ─────────
+const store = {
+  mode: "memory", db: null, uid: null, mem: {}, queue: {},
+  async init() {
+    try {
+      const [db, user] = await Promise.all([window.claude?.use("db"), window.claude?.use("user")]);
+      const uid = user ? await user.id() : null;
+      if (db && uid) { this.db = db; this.uid = uid; this.mode = "db"; return; }
+    } catch { /* 아래로 */ }
+    this.useLocal();
+  },
+  useLocal() {
+    try { localStorage.setItem("kc:test", "1"); localStorage.removeItem("kc:test"); this.mode = "local"; }
+    catch { this.mode = "memory"; }
+  },
+  ref(key) { return this.db.doc(`data/users/${this.uid}/${key}`); },
+  async get(key) {
+    if (this.mode === "db") {
+      const snap = await this.ref(key).get();
+      return snap.exists ? structuredClone(snap.data()) : null;
+    }
+    if (this.mode === "local") { try { return JSON.parse(localStorage.getItem("kc:" + key)); } catch { return null; } }
+    return this.mem[key] ? structuredClone(this.mem[key]) : null;
+  },
+  // 같은 문서에는 한 번에 하나씩만 쓴다 (앞의 쓰기가 끝난 뒤 다음 쓰기)
+  set(key, value) { return this.chain(key, () => this.write(key, value)); },
+  del(key) { return this.chain(key, () => this.write(key, null)); },
+  chain(key, job) {
+    const run = (this.queue[key] || Promise.resolve()).then(job, job);
+    this.queue[key] = run.catch(() => {});
+    return run;
+  },
+  async write(key, value) {
+    if (this.mode === "db") {
+      try { return value === null ? await this.ref(key).delete() : await this.ref(key).set(value); }
+      catch (e) {
+        if (e?.code === "invalid_argument" || e?.code === "revoked" || e?.code === "not_granted") {
+          this.useLocal(); renderSaveNote(); toast("이 링크에서는 대화가 이 기기에만 저장됩니다.");
+        } else if (e?.code === "quota_exceeded") { toast("저장 공간이 가득 찼습니다. 오래된 대화를 삭제해 주세요."); return; }
+        else throw e;
+      }
+    }
+    if (this.mode === "local") {
+      try { value === null ? localStorage.removeItem("kc:" + key) : localStorage.setItem("kc:" + key, JSON.stringify(value)); return; }
+      catch { this.mode = "memory"; renderSaveNote(); }
+    }
+    if (value === null) delete this.mem[key]; else this.mem[key] = structuredClone(value);
+  },
+};
+
+function renderSaveNote() {
+  $("#save-note").textContent = {
+    db: "대화는 claude.ai 계정에 저장됩니다.",
+    local: "대화는 이 기기 브라우저에만 저장됩니다.",
+    memory: "저장할 수 없는 환경입니다. 창을 닫으면 대화가 사라집니다.",
+  }[store.mode];
+}
+
+// ───────── 공통 ─────────
+function toast(text) {
+  const t = $("#toast"); t.textContent = text; t.hidden = false;
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.hidden = true), 3500);
+}
+// AI 응답과 입력은 반드시 이스케이프해서 HTML에 넣는다 (XSS 방지)
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+const schoolOf = (st) => state.schools[st.school] || { name: st.school, full_name: st.school, color: "#2a9df4", summary: "" };
+const nowIso = () => new Date().toISOString();
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const bondOf = (id) => state.bonds[id] || { affection: 20, memory: "" };
+
+function halo(st, size = "") {
+  const pct = state.bonds[st.id]?.affection ?? 0;
+  return `<span class="halo ${size}" data-halo="${esc(st.id)}" style="--school:${schoolOf(st).color};--pct:${pct}"><span class="ring"></span><span class="face" aria-hidden="true">${esc(st.name[0])}</span></span>`;
+}
+const findStudentByName = (name) => Object.values(state.students).find((s) => s.name === name || s.full_name === name);
+
+// ───────── 프롬프트 (Python app/prompts.py 를 옮긴 것) ─────────
+const STAGES = [
+  [0, "서먹함", "아직 선생님을 잘 모른다. 예의는 지키지만 거리를 두고, 개인적인 이야기는 피한다."],
+  [20, "익숙함", "선생님을 알아보고 편하게 대화한다. 가벼운 농담이나 투정 정도는 한다."],
+  [40, "신뢰", "선생님을 믿고 고민이나 속마음을 조금씩 털어놓는다. 먼저 도움을 청하기도 한다."],
+  [60, "친밀", "선생님 앞에서 본래 모습을 숨기지 않는다. 선생님을 챙기고, 걱정하고, 자랑하고 싶어 한다."],
+  [80, "각별", "선생님을 가장 믿을 수 있는 어른으로 여긴다. 다른 사람에게 하지 않는 이야기도 털어놓는다."],
+];
+function stageOf(a) { let s = STAGES[0]; for (const st of STAGES) if (a >= st[0]) s = st; return { name: s[1], guide: s[2] }; }
+
+const CORE_RULES = `[당신의 역할]
+당신은 게임 「블루 아카이브」의 세계 '키보토스'를 무대로 한 한국어 롤플레이 엔진입니다.
+유저는 연방수사부 '샬레'에 부임한 '선생님'입니다. 당신은 학생들과 주변 세계를 연기합니다.
+
+[반드시 지킬 것]
+1. 유저(선생님)의 대사·행동·생각을 대신 쓰지 마세요. 선생님의 반응은 유저가 정합니다.
+2. 학생들은 미성년자이고 선생님은 그들을 지키는 어른입니다. 연애·성적 묘사, 신체를 성적으로 다루는 묘사는 절대 쓰지 않습니다.
+   유저가 그런 방향으로 유도하면 캐릭터답게 당황하거나 화제를 돌리고, 선생님과 학생의 관계 안에서 이야기를 이어 가세요.
+3. 이야기 속 인물로서만 답하고, 롤플레이 밖의 설명이나 해설은 붙이지 마세요.
+
+[개연성: 장면을 튀게 하지 말 것]
+4. 응답은 항상 [현재 장면]과 직전 대화에서 바로 이어집니다. 첫 문단은 선생님의 마지막 말·행동에 대한 직접적인 반응으로 시작하세요.
+5. 장소와 시간은 선생님이 이동하거나 시간을 건너뛰자고 할 때만 바뀝니다. 바뀔 때는 지문으로 이동·경과를 분명히 쓰세요.
+6. 새 사건(습격, 사고, 비밀 폭로, 갑작스러운 손님)은 선생님이 원하거나, 이미 이야기에 나온 단서에서 이어질 때만 일으키세요. 한 응답에 새 사건은 많아야 하나입니다.
+7. 인물은 그 자리에 있을 이유가 있어야 등장합니다. 갑자기 나타나지 말고, 오는 모습이나 이유를 지문으로 보여 주세요. 장면을 떠난 인물은 다시 올 이유가 생기기 전까지 나오지 않습니다.
+8. 인물은 자기가 직접 보거나 들은 것만 압니다. 그 자리에 없던 인물은 방금 일어난 일을 모릅니다.
+9. 응답은 1~4개의 짧은 문단으로 쓰고, 장면을 서둘러 끝내거나 몇 시간씩 건너뛰지 마세요. 다음 행동은 선생님에게 맡기세요.
+
+[설정: 원작과 다르게 만들지 말 것]
+10. 학생의 말투, 1인칭, 호칭, 성격은 아래 프로필을 그대로 따르고 끝까지 유지하세요. 학생마다 말투가 섞이지 않게 하세요.
+11. 프로필·세계관에 없는 과거사, 가족, 능력, 인간관계, 연애 감정을 지어내지 마세요. 모르는 공식 설정은 단정하지 말고 자연스럽게 넘어가세요.
+12. 학생 이름은 명부에 적힌 표기 그대로 쓰세요. 다른 학원 학생끼리 처음부터 친한 사이로 그리지 마세요(프로필에 관계가 적힌 경우는 예외).
+13. 총격전은 키보토스의 일상입니다. 헤일로가 있는 학생은 총에 맞아도 크게 다치지 않으며, 전투는 액션·코미디 톤을 기본으로 합니다.
+
+[출력 형식]
+- 지문(행동·표정·배경 묘사)은 한 줄 전체를 *별표*로 감쌉니다.  예) *시로코가 자전거에서 내리며 고개를 갸웃한다.*
+- 대사는 '이름: "대사"' 형식으로 한 줄에 하나씩 씁니다.          예) 시로코: "선생님, 은행… 아니, 산책 갈래?"
+- 학생이 아닌 인물(불량배, 로봇 시민 등)도 같은 형식을 씁니다.
+- 응답의 맨 끝에는 화면에 보이지 않는 내부 태그 두 종류를 이 순서로 씁니다.
+  [장면 장소: 지금 있는 곳 | 시간: 시간대 | 등장: 지금 그 자리에 있는 학생id들을 쉼표로]
+  [호감도 학생id:+1]  ← 이번 응답에서 선생님과 직접 교류한 학생마다 한 줄. 값은 -2~+2 (평범한 대화는 0이나 +1, 크게 감동하거나 실망했을 때만 ±2)
+  예) [장면 장소: 샬레 집무실 | 시간: 늦은 오후 | 등장: yuuka, noa]
+      [호감도 yuuka:+1]`;
+
+function studentBlock(s) {
+  const sc = schoolOf(s);
+  const L = [`- ${s.name} (id: ${s.id})`, `  · 본명: ${s.full_name} / ${sc.name} ${s.year || ""} / 소속: ${s.club || "없음"}`];
+  for (const [label, k] of [["나이", "age"], ["생일", "birthday"], ["키", "height"], ["취미", "hobby"], ["무기", "weapon"],
+    ["성격", "personality"], ["말투", "speech"], ["선생님을 대하는 태도", "sensei"], ["인간관계", "relations"], ["배경·스토리", "story"]])
+    if (s[k]) L.push(`  · ${label}: ${s[k]}`);
+  if (s.detail === "basic") L.push("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)");
+  const b = bondOf(s.id), st = stageOf(b.affection);
+  L.push(`  · 선생님과의 관계: ${st.name} (호감도 ${b.affection}/100) — ${st.guide}`);
+  if (b.memory) L.push(`  · 이전 만남에서 기억하는 것: ${b.memory}`);
+  return L.join("\n");
+}
+
+// 현재 장면 = 가장 최근 응답이 남긴 [장면] 태그. 없으면 방을 만들 때 정한 첫 장면.
+function currentScene(room) {
+  for (let i = room.messages.length - 1; i >= 0; i--) if (room.messages[i].scene) return room.messages[i].scene;
+  return room.scene0 || null;
+}
+
+// 상세 프로필을 넣을 학생: 방의 고정 학생 + 지금 장면에 있는 학생 + 최근 대화에 이름이 나온 학생
+function focusStudents(room) {
+  const ids = [...room.student_list, ...(currentScene(room)?.present || [])];
+  const recent = room.messages.slice(-2).map((m) => m.content).join("\n");
+  for (const s of Object.values(state.students)) if (recent.includes(s.name) && s.name.length >= 2) ids.push(s.id);
+  return [...new Set(ids)].filter((i) => state.students[i]).slice(0, 8).map((i) => state.students[i]);
+}
+
+// 자유 모드용 140명 요약 명부 (id|이름|학교|소속|말투 앞부분)
+function rosterDigest() {
+  return Object.values(state.students).map((s) => {
+    const speech = (s.speech || "").split(/[.。]/)[0].slice(0, 40);
+    return `${s.id}|${s.name}|${schoolOf(s).name}|${s.club || "무소속"}${speech ? "|" + speech : ""}`;
+  }).join("\n");
+}
+
+function buildSystem(room) {
+  const studs = focusStudents(room);
+  const parts = [CORE_RULES, "[세계관 핵심]\n" + state.world.prompt_summary];
+  parts.push(state.profile.sensei_name ? `선생님의 이름은 '${state.profile.sensei_name}'입니다. 학생들은 대개 그냥 '선생님'이라고 부릅니다.` : "학생들은 유저를 '선생님'이라고 부릅니다.");
+  const schoolIds = [...new Set(studs.map((s) => s.school))];
+  parts.push("[관련 학교]\n" + schoolIds.map((id) => state.schools[id]).filter(Boolean).map((s) => `- ${s.full_name}: ${s.summary}`).join("\n"));
+  parts.push("[등장 학생 상세 프로필]\n" + (studs.length ? studs.map(studentBlock).join("\n") : "(아직 만난 학생이 없습니다)"));
+  if (room.mode === "free") {
+    const place = state.world.places.find((p) => p.id === room.place_id);
+    parts.push(`[자유 모드]
+선생님이 키보토스를 자유롭게 돌아다니며 학생들을 만납니다. 당신은 내레이터이자 모든 인물입니다.
+- 지금 장소에 있을 법한 학생만 등장시키세요. 그 학원 학생이거나, 그 장소에 올 이유(동아리 활동, 심부름, 샬레 당번 등)가 있어야 합니다.
+- 한 응답에 새로 등장하는 학생은 많아야 2명입니다. 위 상세 프로필이 없는 학생이 처음 나올 때는 아래 [학생 명부]의 정보 안에서 짧게 등장시키세요. 다음 응답부터 상세 프로필이 주어집니다.
+- 학생은 아래 명부에 있는 학생만 등장시킵니다. 명부에 없는 이름의 학생을 만들지 마세요(이름 없는 엑스트라 학생이나 로봇 시민은 괜찮습니다).
+- 선생님이 다른 곳으로 가면 그곳에 맞는 학생으로 자연스럽게 바뀌고, 떠난 학생은 [장면]의 등장 목록에서 빠집니다.
+시작 장소: ${place?.name || room.place_name || "샬레 집무실"} — ${place?.desc || ""}
+
+[학생 명부] (형식: id|이름|학교|소속|말투)
+${rosterDigest()}`);
+  } else if (room.mode === "story") {
+    const sc = state.scenarios.find((x) => x.id === room.scenario_id) || {};
+    parts.push(`[스토리 모드]\n당신은 내레이터이자 모든 등장인물입니다. 장면을 묘사하고 여러 학생이 서로 대화하게 하세요.\n학생마다 말투를 확실히 구분하고, 한 응답에 모든 학생을 억지로 등장시키지 않아도 됩니다.\n시나리오: ${sc.title || "자유 시나리오"}\n장소: ${sc.location || ""}\n개요: ${sc.summary || ""}`);
+  } else if (studs[0]) {
+    parts.push(`[1:1 대화 모드]\n당신은 ${studs[0].name}입니다. 선생님과 단둘이 나누는 대화가 중심입니다. 필요하면 지문으로 주변 상황을 묘사할 수 있지만, 다른 학생은 꼭 필요할 때만 잠깐 등장시킵니다.`);
+    if (room.outfit) parts.push(`[현재 차림] ${room.outfit} — ${state.world.outfit_contexts[room.outfit] || ""}`);
+  }
+  if (room.situation) parts.push(`[유저가 정한 상황 설정]\n${room.situation}`);
+  if (room.summary) parts.push(`[지금까지의 줄거리 요약]\n${room.summary}`);
+  const scene = currentScene(room);
+  if (scene) {
+    const who = (scene.present || []).map((i) => state.students[i]?.name).filter(Boolean).join(", ") || "선생님뿐";
+    parts.push(`[현재 장면] 장소: ${scene.place || "?"} / 시간: ${scene.time || "?"} / 그 자리에 있는 학생: ${who}\n이 장면에서 바로 이어서 쓰세요.`);
+  }
+  return parts.join("\n\n");
+}
+
+// sample 입력: 설정 전체를 첫 user 턴에 넣고, 이후 대화를 이어 붙인다. 반드시 user 턴으로 끝나야 한다.
+function buildTurns(room) {
+  const turns = [{ role: "user", content: buildSystem(room) + "\n\n위 설정에 따라 롤플레이를 진행하세요. 이후 '선생님'의 메시지는 유저가 직접 입력한 것입니다." }];
+  for (const m of room.messages.slice(room.summarized_count)) turns.push({ role: m.role, content: m.content });
+  if (turns.length === 1)
+    turns.push({ role: "user", content: "(선생님이 막 이곳에 도착했다. 장면을 시작해 주세요.)" });
+  else if (turns.at(-1).role === "assistant")
+    turns.push({ role: "user", content: "(선생님은 잠시 말없이 지켜본다. 새 사건을 만들지 말고, 지금 장면 안에서 인물들의 반응을 자연스럽게 이어 주세요.)" });
+  return turns;
+}
+
+// ───────── 호감도·기억 (Python app/memory.py 를 옮긴 것) ─────────
+const TAG = /\[호감도\s+([\w*]+)\s*:\s*([+-]?\d+)\]/g;
+const SCENE_TAG = /\[장면\s+([^\]]*)\]/g;
+
+// 응답에서 내부 태그를 떼어 내고 {보이는 글, 호감도 변화, 장면}을 돌려준다.
+function parseReply(raw) {
+  const changes = {};
+  for (const [, sid, d] of raw.matchAll(TAG)) changes[sid] = Math.max(-2, Math.min(2, parseInt(d, 10)));
+  let scene = null;
+  for (const [, body] of raw.matchAll(SCENE_TAG)) {
+    const field = (name) => (body.match(new RegExp(name + "\\s*[:：]\\s*([^|]*)")) || [])[1]?.trim() || "";
+    const present = field("등장").split(/[,，\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => state.students[x]);
+    scene = { place: field("장소").slice(0, 60), time: field("시간").slice(0, 30), present: [...new Set(present)].slice(0, 8) };
+  }
+  return { text: raw.replace(TAG, "").replace(SCENE_TAG, "").trim(), changes, scene };
+}
+// 스트리밍 중에는 반쯤 쓰인 태그(끝부분의 '[호감도…', '[장면…')도 숨긴다.
+const visibleText = (t) => t.replace(TAG, "").replace(SCENE_TAG, "").replace(/\[(호|장|호감|장면|호감도)?[^\]\n]{0,120}$/, "").trim();
+
+// 명부에 있는 학생이라면 누구든 호감도가 반영된다 (자유 모드에서 새로 만난 학생 포함).
+function applyAffection(room, changes, sign = 1) {
+  const applied = {};
+  for (const [sid, d] of Object.entries(changes)) {
+    if (!state.students[sid] || !d) continue; // 명부에 없는 id를 AI가 지어내면 무시
+    const b = { ...bondOf(sid) };
+    b.affection = Math.max(0, Math.min(100, b.affection + sign * d));
+    state.bonds[sid] = b; applied[sid] = d;
+  }
+  return applied;
+}
+
+const SUMMARY_TRIGGER = 30, KEEP_RECENT = 12, MAX_STORED = 160;
+
+async function maybeSummarize(room) {
+  const pending = room.messages.slice(room.summarized_count);
+  if (pending.length <= SUMMARY_TRIGGER || !state.sample) return;
+  const chunk = pending.slice(0, pending.length - KEEP_RECENT);
+  const cast = [...new Set([...room.student_list, ...(room.met || [])])].filter((i) => state.students[i]).slice(0, 30);
+  const names = cast.map((i) => `${state.students[i].name}(${i})`).join(", ");
+  const mems = cast.map((i) => `- ${i}: ${bondOf(i).memory || "(없음)"}`).join("\n");
+  const prompt = `당신은 롤플레이 기록을 정리하는 서기입니다. 등장 학생: ${names}
+아래 대화를 읽고 JSON 하나만 출력하세요.
+{"room_summary": "기존 요약과 새 대화를 합친 줄거리 요약. 사건 순서, 약속, 현재 상황 위주로 8문장 이내", "student_memories": {"학생id": "이 학생이 다음 만남에도 기억할 만한 선생님과의 핵심 사실 (2문장 이내)"}}
+기존 요약: ${room.summary || "(없음)"}
+학생별 기존 기억:
+${mems}
+
+[대화]
+${chunk.map((m) => `${m.role === "user" ? "선생님" : "이야기"}: ${m.content}`).join("\n")}`;
+  try {
+    const data = await state.sample.json(prompt, { cache: false });
+    room.summary = String(data?.room_summary || room.summary).slice(0, 2000);
+    for (const [sid, mem] of Object.entries(data?.student_memories || {}))
+      if (cast.includes(sid) && mem) state.bonds[sid] = { ...bondOf(sid), memory: String(mem).slice(0, 400) };
+    room.summarized_count += chunk.length;
+    await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
+    toast("대화가 길어져 앞부분을 기억으로 정리했습니다.");
+  } catch { /* 요약 실패는 치명적이지 않다. 다음 메시지 때 다시 시도한다. */ }
+}
+
+// ───────── 대화방 저장 ─────────
+async function saveRoom(room) {
+  // 문서 하나의 크기 제한(256KB) 때문에, 이미 요약된 오래된 메시지부터 덜어 낸다.
+  const drop = Math.min(Math.max(0, room.messages.length - MAX_STORED), room.summarized_count);
+  if (drop) { room.messages.splice(0, drop); room.summarized_count -= drop; }
+  room.updated_at = nowIso();
+  const meta = { id: room.id, title: room.title, mode: room.mode, student_list: room.mode === "free" ? (room.met || []) : room.student_list, updated_at: room.updated_at };
+  state.rooms = [meta, ...state.rooms.filter((r) => r.id !== room.id)];
+  renderRooms();
+  await store.set("room-" + room.id, room);
+  await store.set("roomindex", { rooms: state.rooms });
+}
+
+// ───────── 화면 전환 ─────────
+function showView(name) {
+  for (const v of ["free", "roster", "stories", "world", "chat"]) $(`#view-${v}`).hidden = v !== name;
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === name));
+  $("#sidebar").classList.remove("open");
+  if (name !== "chat") { state.ctl?.abort(); state.room = null; $("#topbar-title").textContent = "키보토스 채팅"; renderRooms(); }
+}
+document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => showView(t.dataset.view)));
+$("#open-sidebar").onclick = () => $("#sidebar").classList.add("open");
+$("#close-sidebar").onclick = () => $("#sidebar").classList.remove("open");
+
+// ───────── 학생 명부 ─────────
+function renderFilters() {
+  $("#school-filter").innerHTML = [["", { name: "전체" }], ...Object.entries(state.schools)]
+    .map(([k, s]) => `<button class="chip" data-school="${k}" aria-pressed="${state.schoolFilter === k}">${esc(s.name)}</button>`).join("");
+  $("#school-filter").querySelectorAll(".chip").forEach((c) => (c.onclick = () => { state.schoolFilter = c.dataset.school; renderFilters(); renderRoster(); }));
+}
+function renderRoster() {
+  const q = $("#search").value.trim().toLowerCase();
+  const list = Object.values(state.students).filter((s) => (!state.schoolFilter || s.school === state.schoolFilter) &&
+    (!q || [s.name, s.full_name, s.club, schoolOf(s).name].some((v) => (v || "").toLowerCase().includes(q))));
+  $("#roster").innerHTML = list.length ? list.map((s) => `<li><button data-id="${s.id}" style="--school:${schoolOf(s).color}">${halo(s)}
+      <span class="who"><strong>${esc(s.name)}${s.detail === "basic" ? '<span class="tag-basic">자료 보강 중</span>' : ""}</strong>
+      <span>${esc(schoolOf(s).name)} · ${esc(s.club || "무소속")}</span></span></button></li>`).join("")
+    : `<li class="empty">조건에 맞는 학생이 없습니다. 검색어나 학교 필터를 바꿔 보세요.</li>`;
+  $("#roster").querySelectorAll("button").forEach((b) => (b.onclick = () => openStudentSheet(b.dataset.id)));
+}
+$("#search").oninput = renderRoster;
+
+function openStudentSheet(id) {
+  const s = state.students[id], b = state.bonds[id];
+  const facts = [["학교", schoolOf(s).name + (s.year ? ` ${s.year}` : "")], ["소속", s.club], ["생일", s.birthday], ["키", s.height], ["취미", s.hobby], ["무기", s.weapon]].filter(([, v]) => v);
+  const others = Object.keys(state.world.outfit_contexts).filter((o) => !s.outfits?.includes(o));
+  $("#sheet-body").innerHTML = `
+    <div class="sheet-top">${halo(s, "big")}<div><h2>${esc(s.full_name)}</h2>
+      <p class="muted">${b ? `관계: ${esc(stageOf(b.affection).name)} (${b.affection}/100)` : "아직 대화한 적이 없습니다."}</p></div></div>
+    ${s.personality ? `<p>${esc(s.personality)}</p>` : ""}
+    ${s.detail === "basic" ? `<p class="muted">공개된 자료가 적은 학생입니다. 대화 중 설정이 단순할 수 있습니다.</p>` : ""}
+    <dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    <label for="f-outfit">차림
+      <select id="f-outfit" name="outfit"><option value="">평상시 (교복)</option>
+        ${s.outfits?.length ? `<optgroup label="게임에 나온 차림">${s.outfits.map((o) => `<option>${esc(o)}</option>`).join("")}</optgroup>` : ""}
+        <optgroup label="그 밖의 상황">${others.map((o) => `<option>${esc(o)}</option>`).join("")}</optgroup>
+      </select></label>
+    <label for="f-situation">상황 설정 (선택)
+      <textarea id="f-situation" name="situation" rows="3" maxlength="1000" placeholder="예: 비 오는 날 샬레에서 서류 정리를 돕다가 둘만 남았다."></textarea></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button>
+      <button class="btn ghost" id="sheet-meet">자유 모드로 만나러 가기</button>
+      <button class="btn primary" id="sheet-start">1:1 대화</button></div>`;
+  $("#sheet-meet").onclick = (e) => { e.preventDefault(); $("#sheet").close(); meetInFree(id); };
+  $("#sheet-start").onclick = (e) => {
+    e.preventDefault();
+    const f = new FormData($("#sheet-body")); $("#sheet").close();
+    createRoom({ mode: "single", student_ids: [id], outfit: f.get("outfit") || "", situation: (f.get("situation") || "").trim() });
+  };
+  $("#sheet").showModal();
+}
+
+// ───────── 스토리 ─────────
+function renderScenarios() {
+  $("#scenario-list").innerHTML = state.scenarios.map((sc) => `<li><button data-id="${sc.id}"><h2>${esc(sc.title)}</h2><span class="loc">${esc(sc.location)}</span><span>${esc(sc.summary)}</span></button></li>`).join("");
+  $("#scenario-list").querySelectorAll("button").forEach((b) => (b.onclick = () => openStorySheet(b.dataset.id)));
+}
+function openStorySheet(id) {
+  const sc = state.scenarios.find((x) => x.id === id), chosen = new Set(sc.students), all = Object.values(state.students);
+  $("#sheet-body").innerHTML = `<h2>${esc(sc.title)}</h2><p>${esc(sc.summary)}</p>
+    <label for="pick-q">함께할 학생 (최대 6명)<input id="pick-q" type="search" placeholder="이름으로 찾아 추가"></label>
+    <div id="pick" class="pick"></div>
+    <label for="f-situation">상황 설정 ${sc.opening ? "(선택)" : "(자유 시나리오는 적어 주세요)"}
+      <textarea id="f-situation" name="situation" rows="3" maxlength="1000" placeholder="예: 밀레니엄 학생들과 아비도스로 원정 간다."></textarea></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button><button class="btn primary" id="sheet-start">이야기 시작</button></div>`;
+  const paint = () => {
+    const q = $("#pick-q").value.trim();
+    $("#pick").innerHTML = all.filter((s) => chosen.has(s.id) || (q ? s.name.includes(q) : false)).slice(0, 60)
+      .map((s) => `<button type="button" class="chip" data-id="${s.id}" aria-pressed="${chosen.has(s.id)}">${esc(s.name)}</button>`).join("")
+      || `<span class="muted">이름을 입력해 학생을 찾으세요.</span>`;
+    $("#pick").querySelectorAll(".chip").forEach((c) => (c.onclick = () => {
+      if (chosen.has(c.dataset.id)) chosen.delete(c.dataset.id);
+      else if (chosen.size < 6) chosen.add(c.dataset.id); else toast("스토리에는 최대 6명까지 함께할 수 있습니다.");
+      paint();
+    }));
+  };
+  $("#pick-q").oninput = paint; paint();
+  $("#sheet-start").onclick = (e) => {
+    e.preventDefault();
+    if (!chosen.size) return toast("학생을 한 명 이상 고르세요.");
+    const situation = (new FormData($("#sheet-body")).get("situation") || "").trim();
+    if (!sc.opening && !situation) return toast("자유 시나리오는 상황 설정을 적어 주세요.");
+    $("#sheet").close();
+    createRoom({ mode: "story", student_ids: [...chosen], scenario_id: sc.id, situation });
+  };
+  $("#sheet").showModal();
+}
+
+// ───────── 자유 모드 ─────────
+function renderPlaces() {
+  $("#place-list").innerHTML = state.world.places.map((p) => `<li><button data-id="${p.id}"><h2 ${p.school ? `style="color:${state.schools[p.school]?.color}"` : ""}>${esc(p.name)}</h2>
+      <span class="loc">${esc(p.school ? state.schools[p.school]?.full_name : "D.U. 자치구")}</span><span>${esc(p.desc)}</span></button></li>`).join("");
+  $("#place-list").querySelectorAll("button").forEach((b) => (b.onclick = () => openPlaceSheet(b.dataset.id)));
+}
+function openPlaceSheet(id) {
+  const p = state.world.places.find((x) => x.id === id);
+  $("#sheet-body").innerHTML = `<h2>${esc(p.name)}</h2><p>${esc(p.desc)}</p>
+    <label for="f-situation">상황 설정 (선택)
+      <textarea id="f-situation" name="situation" rows="3" maxlength="1000" placeholder="예: 비 오는 오후, 우산을 깜빡한 채 들렀다."></textarea></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button><button class="btn primary" id="sheet-start">여기서 시작</button></div>`;
+  $("#sheet-start").onclick = (e) => {
+    e.preventDefault();
+    const situation = (new FormData($("#sheet-body")).get("situation") || "").trim();
+    $("#sheet").close();
+    createRoom({ mode: "free", place_id: id, situation });
+  };
+  $("#sheet").showModal();
+}
+// 학생 상세에서 '자유 모드로 만나러 가기': 그 학생의 학원 장소에서 시작 (해당 장소가 없으면 샬레)
+function meetInFree(sid) {
+  const s = state.students[sid];
+  const place = state.world.places.find((p) => p.school === s.school) || state.world.places[0];
+  createRoom({ mode: "free", place_id: place.id, meet: sid });
+}
+
+// ───────── 세계관 ─────────
+function renderWorld() {
+  $("#world").innerHTML = [
+    ...state.world.sections.map((s) => `<article><h2>${esc(s.title)}</h2><p>${esc(s.body)}</p></article>`),
+    ...Object.values(state.schools).map((s) => `<article><h2 style="color:${s.color}">${esc(s.full_name)}</h2><p>${esc(s.summary)}</p></article>`),
+  ].join("");
+}
+
+// ───────── 선생님 이름 ─────────
+function renderMe() { $("#me-name").textContent = state.profile.sensei_name ? `${state.profile.sensei_name} 선생님` : "선생님"; }
+$("#open-settings").onclick = () => {
+  $("#sheet-body").innerHTML = `<h2>선생님 이름</h2><p class="muted">학생들이 이야기 속에서 참고하는 이름입니다. 비워 두면 '선생님'으로만 불립니다.</p>
+    <label for="f-name">이름<input id="f-name" maxlength="20" value="${esc(state.profile.sensei_name)}"></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button><button class="btn primary" id="save-name">저장</button></div>`;
+  $("#save-name").onclick = async (e) => {
+    e.preventDefault();
+    state.profile.sensei_name = $("#f-name").value.trim().slice(0, 20);
+    $("#sheet").close(); renderMe();
+    await store.set("profile", state.profile); toast("이름을 저장했습니다.");
+  };
+  $("#sheet").showModal();
+};
+
+// ───────── 대화방 목록 ─────────
+function renderRooms() {
+  $("#room-list").innerHTML = state.rooms.length ? state.rooms.map((r) => `<li><button data-id="${r.id}" class="${state.room?.id === r.id ? "active" : ""}">
+      <span>${esc(r.title)}</span><span class="room-meta">${{ story: "스토리", free: `자유 · 만난 학생 ${r.student_list.length}명`, single: "1:1" }[r.mode]} ·${new Date(r.updated_at).toLocaleDateString("ko-KR")}</span></button></li>`).join("")
+    : `<li class="empty">아직 대화가 없습니다. 학생 명부에서 학생을 골라 보세요.</li>`;
+  $("#room-list").querySelectorAll("button").forEach((b) => (b.onclick = () => openRoom(b.dataset.id)));
+}
+
+async function createRoom({ mode, student_ids = [], outfit = "", scenario_id = "", situation = "", place_id = "", meet = "" }) {
+  const first = state.students[student_ids[0]];
+  const sc = scenario_id ? state.scenarios.find((x) => x.id === scenario_id) : null;
+  const place = place_id ? state.world.places.find((p) => p.id === place_id) : null;
+  const room = {
+    id: newId(), mode, student_list: student_ids, outfit, scenario_id, situation, summary: "", summarized_count: 0,
+    title: mode === "story" ? (sc?.title || "자유 스토리") : mode === "free" ? `자유 모드 · ${place?.name || "키보토스"}`
+      : first.name + (outfit ? ` (${outfit})` : ""),
+    messages: sc?.opening ? [{ role: "assistant", content: sc.opening, affection: {} }] : [],
+  };
+  if (mode === "free") {
+    room.place_id = place_id;
+    room.met = meet ? [meet] : [];
+    room.scene0 = { place: place?.name || "", time: "", present: meet ? [meet] : [] };
+    if (meet) room.situation = `선생님은 ${state.students[meet].name}을(를) 만나러 왔다. ${situation}`.trim();
+  } else if (sc?.opening) {
+    room.scene0 = { place: sc.location, time: "", present: sc.students.filter((i) => student_ids.includes(i)) };
+  }
+  for (const sid of student_ids) if (!state.bonds[sid]) state.bonds[sid] = { affection: 20, memory: "" };
+  showView("chat"); state.room = room; renderChat();
+  await saveRoom(room);
+  if (!room.messages.length) runTurn("continue"); // 오프닝이 없으면 학생이 먼저 말을 건다
+}
+
+async function openRoom(id) {
+  const room = await store.get("room-" + id);
+  if (!room) { toast("대화를 불러오지 못했습니다."); state.rooms = state.rooms.filter((r) => r.id !== id); renderRooms(); return; }
+  showView("chat"); state.room = room; renderChat(); renderRooms();
+}
+
+// ───────── 채팅 그리기 ─────────
+function renderAssistant(text) {
+  return text.split(/\n+/).filter((l) => l.trim()).map((raw) => {
+    const line = raw.trim();
+    const narr = line.match(/^\*(.+)\*$/);
+    if (narr) return `<p class="narr">${esc(narr[1])}</p>`;
+    const talk = line.match(/^([^:："*]{1,16})[:：]\s*["“](.*?)["”]?$/);
+    if (talk) {
+      const st = findStudentByName(talk[1].trim());
+      const face = st ? halo(st) : `<span class="halo"><span class="face" aria-hidden="true">${esc(talk[1][0])}</span></span>`;
+      return `<div class="line">${face}<div class="bubble" ${st ? `style="--school:${schoolOf(st).color}"` : ""}><b>${esc(talk[1])}</b>${esc(talk[2])}</div></div>`;
+    }
+    return `<p class="plain">${esc(line)}</p>`;
+  }).join("");
+}
+function affectionNote(aff) {
+  const p = Object.entries(aff || {}).filter(([, d]) => d).map(([id, d]) => `${state.students[id]?.name ?? id} ${d > 0 ? "+" : ""}${d}`);
+  return p.length ? `<span class="affection-note">호감도 ${esc(p.join(", "))}</span>` : "";
+}
+// data-i = room.messages 안의 위치. 메시지를 누르면 이 번호로 삭제 대상을 찾는다.
+const messageHtml = (m, i) => m.role === "user" ? `<li class="msg user" data-i="${i}">${esc(m.content)}</li>`
+  : `<li class="msg assistant" data-i="${i}">${renderAssistant(m.content)}${affectionNote(m.affection)}</li>`;
+
+function renderChatHead() {
+  const room = state.room, scene = currentScene(room);
+  // 자유 모드는 지금 장면에 있는 학생, 나머지는 방에 고정된 학생을 보여 준다.
+  const ids = room.mode === "free" ? (scene?.present || []) : room.student_list;
+  const studs = ids.map((i) => state.students[i]).filter(Boolean);
+  $("#chat-halos").innerHTML = studs.slice(0, 4).map((s) => halo(s, "big")).join("");
+  $("#chat-title").textContent = room.title;
+  $("#topbar-title").textContent = room.title;
+  let sub;
+  if (room.mode === "single" && studs[0]) sub = `${stageOf(bondOf(studs[0].id).affection).name} · 호감도 ${bondOf(studs[0].id).affection}`;
+  else sub = [scene?.place, scene?.time].filter(Boolean).join(" · ") + (studs.length ? ` — ${studs.map((s) => `${s.name} ${bondOf(s.id).affection}`).join(", ")}` : "");
+  $("#chat-sub").textContent = sub || "장면을 준비하는 중";
+}
+
+function renderChat({ keepScroll = false } = {}) {
+  clearSelection(); // 다시 그리면 메시지 번호가 바뀔 수 있으므로 선택을 푼다
+  renderChatHead();
+  const room = state.room, box = $("#messages"), top = box.scrollTop;
+  box.innerHTML = room.messages.length ? room.messages.map(messageHtml).join("") : `<li class="empty">첫 마디를 건네 보세요.</li>`;
+  if (keepScroll) { box.scrollTop = top; updateJump(); } else scrollDown();
+}
+
+// ───────── 메시지 삭제: 메시지를 누르면 입력칸 위에 '삭제' 막대가 나온다 ─────────
+let selected = -1;
+function clearSelection() {
+  selected = -1;
+  document.querySelectorAll(".msg.selected").forEach((el) => el.classList.remove("selected"));
+  $("#msg-bar").hidden = true;
+}
+$("#messages").addEventListener("click", (e) => {
+  const li = e.target.closest(".msg[data-i]");
+  const same = li && Number(li.dataset.i) === selected;
+  clearSelection();
+  if (!li || same || state.busy) return; // 같은 메시지를 다시 누르면 선택 해제
+  selected = Number(li.dataset.i);
+  li.classList.add("selected");
+  const m = state.room.messages[selected];
+  $("#msg-bar-label").textContent = m.role === "user" ? "내 메시지를 선택했습니다" : "답장을 선택했습니다";
+  $("#msg-bar").hidden = false;
+});
+$("#msg-cancel").onclick = clearSelection;
+$("#msg-del").onclick = () => { const i = selected; clearSelection(); deleteMessage(i); };
+
+async function deleteMessage(i) {
+  const room = state.room;
+  if (!room || state.busy || !room.messages[i]) return;
+  const [m] = room.messages.splice(i, 1);
+  applyAffection(room, m.affection || {}, -1); // 지운 답장으로 올랐던 호감도는 되돌린다
+  if (i < room.summarized_count) room.summarized_count--; // 이미 기억으로 정리된 메시지였다면 개수만 맞춘다
+  renderChat({ keepScroll: true });
+  await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
+  toast(m.role === "user" ? "내 메시지를 삭제했습니다." : "답장을 삭제했습니다.");
+}
+
+// ───────── 입력 도우미: " " / * * 넣기 (선택한 글자가 있으면 감싸기) ─────────
+document.querySelectorAll("[data-wrap]").forEach((btn) => {
+  btn.addEventListener("pointerdown", (e) => e.preventDefault()); // 누를 때 입력칸 포커스가 빠져 키보드가 닫히지 않게
+  btn.onclick = () => {
+    const box = $("#input"), mark = btn.dataset.wrap;
+    const { selectionStart: a, selectionEnd: b, value } = box;
+    const picked = value.slice(a, b);
+    box.setRangeText(mark + picked + mark, a, b, "end");
+    if (!picked) box.setSelectionRange(a + 1, a + 1); // 빈칸이면 커서를 기호 사이로
+    box.focus();
+  };
+});
+
+// 스크롤: 맨 아래로 / 새 답장의 시작 위치만 보이게 / 아래에 내용이 남았으면 버튼 표시
+function scrollDown() { const b = $("#messages"); b.scrollTop = b.scrollHeight; updateJump(); }
+function revealStart(el) {
+  const box = $("#messages");
+  if (!el) return;
+  const top = el.offsetTop - box.offsetTop;
+  // 답장 시작이 화면 위쪽 1/4 지점 근처에 오도록 (직전 내 메시지가 위에 살짝 보이게)
+  if (top > box.scrollTop + box.clientHeight * 0.4 || top < box.scrollTop) box.scrollTop = top - box.clientHeight * 0.25;
+  updateJump();
+}
+function updateJump() {
+  const b = $("#messages");
+  $("#jump").hidden = b.scrollHeight - b.scrollTop - b.clientHeight < 80;
+}
+$("#messages").addEventListener("scroll", updateJump, { passive: true });
+$("#jump").onclick = () => $("#messages").scrollTo({ top: $("#messages").scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+
+function setBusy(on) {
+  state.busy = on;
+  if (on) clearSelection();
+  ["#btn-continue", "#btn-regen", "#btn-undo"].forEach((s) => ($(s).disabled = on));
+  $("#send").textContent = on ? "멈추기" : "보내기";
+}
+
+const ERROR_TEXT = {
+  not_granted: "Claude 사용이 허용되지 않았습니다. 페이지를 새로 열면 다시 물어봅니다.",
+  sampling_disabled: "이 계정에서는 Claude 응답을 쓸 수 없습니다.",
+  rate_limited: "요청이 너무 많거나 사용 한도에 닿았습니다. 잠시 뒤 다시 시도하세요.",
+  session_expired: "claude.ai에 다시 로그인한 뒤 시도하세요.",
+  refused: "이 내용에는 답할 수 없습니다. 다른 방향으로 이야기를 이어 보세요.",
+  prompt_too_large: "대화가 너무 깁니다. 되돌리기로 몇 턴을 지우거나 새 대화를 시작하세요.",
+  empty_completion: "응답이 비어 있습니다. 다시 생성해 보세요.",
+};
+
+// kind: "send" | "continue" | "regenerate"
+async function runTurn(kind) {
+  const room = state.room;
+  if (!room || state.busy) return;
+  if (!state.sample) {
+    $("#messages").insertAdjacentHTML("beforeend", `<li class="error-line">이 화면에서는 AI 응답을 쓸 수 없습니다. claude.ai 앱이나 웹에서 이 페이지를 열어 주세요.</li>`);
+    return scrollDown();
+  }
+  if (kind === "regenerate") {
+    const last = room.messages.at(-1);
+    if (!last || last.role !== "assistant" || room.messages.length <= room.summarized_count) return toast("다시 생성할 응답이 없습니다.");
+    applyAffection(room, last.affection || {}, -1);
+    room.messages.pop(); renderChat();
+  }
+  const ctl = new AbortController(); state.ctl = ctl;
+  setBusy(true);
+  $("#messages").querySelector(".empty")?.remove();
+  $("#messages").insertAdjacentHTML("beforeend", `<li class="msg assistant" id="live"><span class="status-line">답장을 쓰는 중…</span></li>`);
+  // 답장 자리를 미리 확보하고 시작 부분까지만 한 번 내려 준다. 써지는 동안에는 화면을 움직이지 않는다.
+  $("#live").style.minHeight = Math.round($("#messages").clientHeight * 0.6) + "px";
+  revealStart($("#live"));
+  try {
+    const { text: raw, truncated } = await state.sample(buildTurns(room), {
+      cache: false, signal: ctl.signal, modelTier: $("#tier").value,
+      onText: ({ text }) => { const live = $("#live"); if (live && state.room === room) { live.innerHTML = renderAssistant(visibleText(text)); updateJump(); } },
+    });
+    const { text, changes, scene } = parseReply(raw);
+    const applied = applyAffection(room, changes);
+    const msg = { role: "assistant", content: text || "*(응답이 비어 있습니다. 다시 생성해 보세요.)*", affection: applied };
+    if (scene) msg.scene = scene;
+    room.messages.push(msg);
+    if (room.mode === "free") {
+      room.met = [...new Set([...(room.met || []), ...(scene?.present || []), ...Object.keys(applied)])];
+      for (const sid of room.met) if (!state.bonds[sid]) state.bonds[sid] = { affection: 20, memory: "" };
+    }
+    if (state.room === room) {
+      // 전체를 다시 그리지 않고, 쓰던 말풍선만 완성본으로 바꾼다 (읽던 위치 유지)
+      const live = $("#live");
+      if (live) { live.outerHTML = messageHtml(msg, room.messages.length - 1); } else renderChat();
+      renderChatHead();
+      Object.keys(applied).forEach((id) => document.querySelectorAll(`[data-halo="${id}"]`).forEach((h) => h.classList.add("bump")));
+      updateJump();
+      if (truncated) toast("응답이 길어 중간에 끊겼습니다. '이어서 진행'을 눌러 보세요.");
+    }
+    await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
+    maybeSummarize(room);
+  } catch (e) {
+    const keep = e?.text ? visibleText(e.text) : "";
+    if (keep && e.code !== "refused") { // 끊긴 응답이라도 쓰인 부분은 남긴다
+      room.messages.push({ role: "assistant", content: keep, affection: {} });
+      await saveRoom(room);
+    }
+    if (state.room === room) {
+      renderChat();
+      if (e?.code !== "cancelled") {
+        $("#messages").insertAdjacentHTML("beforeend", `<li class="error-line">${esc(ERROR_TEXT[e?.code] || "응답을 받지 못했습니다. 잠시 뒤 다시 시도하세요.")}</li>`);
+        scrollDown();
+      }
+    }
+    if (e?.code === "not_granted" || e?.code === "sampling_disabled") state.sample = null;
+  } finally {
+    if (state.ctl === ctl) state.ctl = null;
+    setBusy(false);
+  }
+}
+
+$("#composer").onsubmit = async (e) => {
+  e.preventDefault();
+  if (state.busy) { state.ctl?.abort(); return; } // 응답 중에는 '멈추기' 버튼
+  const text = $("#input").value.trim();
+  if (!text || !state.room) return;
+  $("#input").value = "";
+  state.room.messages.push({ role: "user", content: text, affection: {} });
+  renderChat();
+  await saveRoom(state.room);
+  runTurn("send");
+};
+$("#input").onkeydown = (e) => {
+  // 모바일 키보드의 Enter는 줄바꿈으로 두고, 전송은 버튼으로 한다.
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(hover: hover)").matches) { e.preventDefault(); $("#composer").requestSubmit(); }
+};
+$("#btn-continue").onclick = () => runTurn("continue");
+$("#btn-regen").onclick = () => runTurn("regenerate");
+$("#btn-undo").onclick = async () => {
+  const room = state.room; if (!room || state.busy) return;
+  let removed = false;
+  while (room.messages.length > room.summarized_count) {
+    const m = room.messages.pop(); removed = true;
+    applyAffection(room, m.affection || {}, -1);
+    if (m.role === "user") break;
+  }
+  if (!removed) return toast("되돌릴 대화가 없습니다.");
+  renderChat();
+  await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
+};
+// 브라우저 confirm()은 이 화면에서 동작하지 않아서 시트로 확인한다.
+$("#delete-room").onclick = () => {
+  const room = state.room; if (!room) return;
+  $("#sheet-body").innerHTML = `<h2>대화 삭제</h2><p>'${esc(room.title)}' 대화를 삭제할까요? 되돌릴 수 없습니다. 학생들의 호감도와 기억은 그대로 남습니다.</p>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">취소</button><button class="btn primary" id="confirm-del">삭제</button></div>`;
+  $("#confirm-del").onclick = async (e) => {
+    e.preventDefault(); $("#sheet").close();
+    state.rooms = state.rooms.filter((r) => r.id !== room.id);
+    showView("roster");
+    await store.del("room-" + room.id);
+    await store.set("roomindex", { rooms: state.rooms });
+    toast("대화를 삭제했습니다.");
+  };
+  $("#sheet").showModal();
+};
+
+// ───────── 시작 ─────────
+// 명부·스토리·세계관은 데이터가 페이지 안에 있어 바로 그리고, 저장된 대화와 Claude 연결은 뒤이어 붙인다.
+renderFilters(); renderRoster(); renderPlaces(); renderScenarios(); renderWorld(); renderMe();
+(async () => {
+  window.claude?.use("sample").then((s) => (state.sample = s)).catch(() => {});
+  await store.init();
+  renderSaveNote();
+  try {
+    const [profile, bonds, index] = await Promise.all([store.get("profile"), store.get("bonds"), store.get("roomindex")]);
+    if (profile) state.profile = { ...state.profile, ...profile };
+    state.bonds = bonds?.bonds || {};
+    state.rooms = index?.rooms || [];
+  } catch { toast("저장된 대화를 불러오지 못했습니다. 잠시 뒤 새로 고침해 보세요."); }
+  renderMe(); renderRooms(); renderRoster();
+})();
+</script>

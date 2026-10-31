@@ -1,0 +1,989 @@
+<title>키보토스 채팅</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gothic+A1:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 레이아웃: 왼쪽 메뉴(모바일은 서랍) + 오른쪽 화면. 하늘색 바탕에 학교 색 헤일로 */
+:root {
+  --bg: #eef5fb; --paper: #ffffff; --ink: #1b2a4a; --ink-soft: #5b6b86; --line: #d7e3ef;
+  --blue: #2a9df4; --blue-deep: #1478c8; --on-blue: #ffffff; --halo: #f2c230; --halo-track: #e3ebf3;
+  --hover: #f5f9fe; --scrim: rgba(27, 42, 74, .45); --danger: #c93a52; --gold-text: #8a6a00;
+  --radius-sm: 6px; --radius-lg: 14px;
+  --display: "Do Hyeon", "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1828; --paper: #16233a; --ink: #e4ecf8; --ink-soft: #9badc9; --line: #283a58;
+  --blue: #3aa8ff; --blue-deep: #8ccaff; --on-blue: #06223f; --halo: #f2c230; --halo-track: #2a3b57;
+  --hover: #1c2c47; --scrim: rgba(0, 0, 0, .55); --danger: #ff7a8f; --gold-text: #f2c230; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1828; --paper: #16233a; --ink: #e4ecf8; --ink-soft: #9badc9; --line: #283a58;
+  --blue: #3aa8ff; --blue-deep: #8ccaff; --on-blue: #06223f; --halo: #f2c230; --halo-track: #2a3b57;
+  --hover: #1c2c47; --scrim: rgba(0, 0, 0, .55); --danger: #ff7a8f; --gold-text: #f2c230; color-scheme: dark }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.65 var(--body); overflow: hidden; }
+h1, h2, .brand { font-family: var(--display); font-weight: 400; margin: 0; text-wrap: balance; }
+h1 { font-size: 1.9rem; line-height: 1.2; }
+.muted { color: var(--ink-soft); }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+.btn { font: 500 .95rem var(--body); border: 0; cursor: pointer; padding: .55rem 1.1rem; border-radius: var(--radius-sm); color: var(--ink); background: transparent; }
+.btn.primary { background: var(--blue); color: var(--on-blue); transform: skewX(-10deg); white-space: nowrap; }
+.btn.primary:hover { background: var(--blue-deep); }
+.btn.ghost { border: 1px solid var(--line); background: var(--paper); }
+.btn.ghost:hover { border-color: var(--blue); }
+.btn.link { color: var(--blue-deep); padding: .3rem .2rem; }
+.btn:disabled { opacity: .5; cursor: default; }
+.icon-btn { border: 0; background: none; font-size: 1.2rem; cursor: pointer; color: var(--ink-soft); padding: .3rem .5rem; }
+
+input, textarea, select { font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .55rem .7rem; width: 100%; }
+input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: none; }
+
+.app { display: grid; grid-template-columns: 272px 1fr; height: 100%; }
+.sidebar { background: var(--paper); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; padding: 1rem; gap: .8rem; }
+.sidebar-head { display: flex; justify-content: space-between; align-items: center; }
+.brand.small { font-size: 1.35rem; color: var(--blue-deep); }
+.tabs { display: grid; gap: .2rem; }
+.tab { text-align: left; border: 0; background: none; font: 500 1rem var(--body); padding: .5rem .7rem; border-radius: var(--radius-sm); cursor: pointer; color: var(--ink); }
+.tab.active { background: var(--bg); color: var(--blue-deep); box-shadow: inset 3px 0 var(--blue); }
+.side-title { font-size: 1rem; color: var(--ink-soft); margin-top: .4rem; }
+.room-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; display: grid; align-content: start; gap: 2px; }
+.room-list button { width: 100%; text-align: left; border: 0; background: none; padding: .5rem .6rem; border-radius: var(--radius-sm); cursor: pointer; font: inherit; color: inherit; display: grid; }
+.room-list button:hover, .room-list button.active { background: var(--bg); }
+.room-meta { font-size: .78rem; color: var(--ink-soft); }
+.sidebar-foot { display: grid; gap: .2rem; border-top: 1px solid var(--line); padding-top: .6rem; font-size: .85rem; }
+.sidebar-foot .row { display: flex; justify-content: space-between; align-items: center; }
+.save-note { font-size: .76rem; color: var(--ink-soft); }
+
+.main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.view { flex: 1; overflow-y: auto; padding-block: 2rem; padding-inline: clamp(16px, 4vw, 48px); }
+.view-head { display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1rem; }
+.view-head input { max-width: 320px; }
+.topbar { display: none; align-items: center; gap: .5rem; padding: .6rem 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.topbar .brand { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.only-mobile { display: none; }
+
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.2rem; }
+.chip { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: .3rem .8rem; font: inherit; font-size: .85rem; cursor: pointer; color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.roster { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: .5rem; }
+.roster button { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: .8rem; align-items: center; text-align: left; font: inherit; color: inherit; background: var(--paper); border: 0; border-left: 4px solid var(--school, var(--line)); border-radius: var(--radius-sm); padding: .6rem .8rem; cursor: pointer; }
+.roster button:hover { background: var(--hover); }
+.who { min-width: 0; }
+.who strong { display: block; font-family: var(--display); font-weight: 400; font-size: 1.15rem; }
+.who span { font-size: .8rem; color: var(--ink-soft); }
+.tag-basic { font-family: var(--body); font-size: .7rem; color: var(--ink-soft); border: 1px dashed var(--line); border-radius: 4px; padding: 0 .3rem; margin-left: .3rem; vertical-align: middle; }
+
+/* 헤일로 아바타: 노란 링이 호감도만큼 찬다 */
+.halo { --size: 44px; --pct: 0; position: relative; width: var(--size); height: var(--size); flex: none; display: inline-block; }
+.halo .face { position: absolute; inset: 4px; border-radius: 50%; background: var(--school, var(--blue)); color: #fff; display: grid; place-items: center; font-family: var(--display); font-size: calc(var(--size) * .42); }
+.halo .ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--halo) calc(var(--pct) * 1%), var(--halo-track) 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%); mask: radial-gradient(circle, transparent 62%, #000 63%); }
+.halo.big { --size: 58px; }
+.halo.bump .ring { animation: glow .9s ease-out; }
+@keyframes glow { 40% { filter: drop-shadow(0 0 7px var(--halo)); } }
+
+.scenarios { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .8rem; max-width: 760px; }
+.scenarios button { width: 100%; text-align: left; font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1rem 1.2rem; cursor: pointer; display: grid; gap: .3rem; }
+.scenarios button:hover { border-color: var(--blue); }
+.scenarios h2 { font-size: 1.35rem; }
+.loc { font-size: .82rem; color: var(--blue-deep); }
+
+.world { max-width: 68ch; display: grid; gap: 1.6rem; }
+.world h2 { font-size: 1.4rem; margin-bottom: .3rem; }
+.world p { margin: 0; }
+
+.view.chat { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.chat-head { display: flex; align-items: center; gap: .8rem; padding-block: .8rem; padding-inline: clamp(16px, 3vw, 32px); background: var(--paper); border-bottom: 1px solid var(--line); }
+.chat-halos { display: flex; }
+.chat-halos .halo + .halo { margin-left: -12px; }
+.chat-title { flex: 1; min-width: 0; }
+.chat-title h1 { font-size: 1.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-title p { margin: 0; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-head select { width: auto; max-width: 150px; font-size: .85rem; }
+
+.messages-wrap { flex: 1; min-height: 0; position: relative; display: flex; }
+.jump { position: absolute; right: clamp(16px, 4vw, 48px); bottom: 12px; border: 1px solid var(--line); background: var(--paper); color: var(--blue-deep); border-radius: 999px; padding: .35rem .9rem; font: 500 .85rem var(--body); cursor: pointer; }
+.scene-line { font-size: .8rem; color: var(--ink-soft); border-top: 1px dashed var(--line); padding-top: .4rem; margin-top: .2rem; }
+.messages { list-style: none; margin: 0; flex: 1; overflow-y: auto; padding-block: 1.5rem; padding-inline: clamp(16px, 4vw, 48px); display: flex; flex-direction: column; gap: .9rem; }
+.msg { max-width: 68ch; min-width: 0; }
+.msg.user { align-self: flex-end; background: var(--blue); color: var(--on-blue); padding: .6rem .9rem; border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg); white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.assistant { align-self: flex-start; display: grid; gap: .55rem; width: 100%; }
+.narr { color: var(--ink-soft); font-style: italic; margin: 0; }
+.line { display: grid; grid-template-columns: auto 1fr; gap: .6rem; align-items: start; }
+.line .halo { --size: 34px; }
+.bubble { background: var(--paper); border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg); padding: .5rem .85rem; border: 1px solid var(--line); min-width: 0; overflow-wrap: anywhere; }
+.bubble b { display: block; font-family: var(--display); font-weight: 400; font-size: 1rem; color: var(--school, var(--blue-deep)); }
+.plain { margin: 0; overflow-wrap: anywhere; }
+.affection-note { font-size: .78rem; color: var(--gold-text); }
+.status-line { color: var(--ink-soft); font-style: italic; }
+.error-line { color: var(--danger); font-size: .88rem; }
+.empty { color: var(--ink-soft); }
+
+.composer { background: var(--paper); border-top: 1px solid var(--line); padding-block: .7rem 1rem; padding-inline: clamp(16px, 3vw, 32px); display: grid; gap: .5rem; }
+.composer-tools { display: flex; gap: .4rem; flex-wrap: wrap; }
+.composer-tools .btn { font-size: .82rem; padding: .3rem .7rem; }
+.format-tools { display: flex; gap: .4rem; margin-left: auto; }
+.format-tools .btn { min-width: 2.6rem; font-weight: 700; }
+.msg[data-i] { cursor: pointer; }
+.msg.selected.user { box-shadow: 0 0 0 2px var(--blue-deep); }
+.msg.selected.assistant { box-shadow: -3px 0 0 var(--blue); padding-left: .5rem; }
+.msg-bar { display: flex; align-items: center; gap: .4rem; background: var(--bg); border-radius: var(--radius-sm); padding: .35rem .5rem; }
+.msg-bar span { flex: 1; min-width: 0; font-size: .85rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-bar .btn { font-size: .82rem; padding: .3rem .8rem; }
+.btn.danger { border: 1px solid var(--danger); background: var(--paper); color: var(--danger); }
+.composer-row { display: flex; gap: .6rem; align-items: end; }
+.composer-row textarea { resize: none; }
+
+.sheet { border: 0; padding: 0; border-radius: var(--radius-lg); width: min(560px, calc(100% - 32px)); max-height: calc(100% - 32px); color: var(--ink); background: var(--paper); }
+.sheet::backdrop { background: var(--scrim); }
+.sheet-inner { padding: 1.5rem; display: grid; gap: 1rem; }
+.sheet-top { display: flex; gap: 1rem; align-items: center; }
+.sheet-top h2 { font-size: 1.8rem; }
+.sheet-top p { margin: 0; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: .2rem .9rem; margin: 0; font-size: .9rem; }
+.facts dt { color: var(--ink-soft); }
+.facts dd { margin: 0; }
+.sheet label { display: grid; gap: .3rem; font-size: .9rem; }
+.sheet-actions { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
+.pick { display: flex; flex-wrap: wrap; gap: .35rem; max-height: 200px; overflow-y: auto; padding: .2rem; }
+
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: .6rem 1rem; border-radius: var(--radius-sm); font-size: .9rem; max-width: calc(100% - 32px); z-index: 30; }
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; }
+  .only-mobile { display: initial; }
+  .topbar { display: flex; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(300px, 85vw); z-index: 20; transform: translateX(-100%); transition: transform .2s;
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px)); padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); padding-left: calc(1rem + env(safe-area-inset-left, 0px)); }
+  .sidebar.open { transform: none; box-shadow: 0 0 0 100vmax var(--scrim); }
+  .view { padding-block: 1.2rem; }
+  h1 { font-size: 1.6rem; }
+  .chat-head { gap: .5rem; }
+  .chat-head .halo.big { --size: 40px; }
+  .chat-halos .halo:nth-child(n+3) { display: none; }
+  .chat-title h1 { display: none; }
+  .chat-head select { max-width: 92px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div id="app" class="app">
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-head">
+      <span class="brand small">키보토스 채팅</span>
+      <button class="icon-btn only-mobile" id="close-sidebar" aria-label="메뉴 닫기">✕</button>
+    </div>
+    <nav class="tabs" aria-label="메뉴">
+      <button data-view="free" class="tab">자유 모드</button>
+      <button data-view="roster" class="tab active">학생 명부</button>
+      <button data-view="stories" class="tab">스토리</button>
+      <button data-view="world" class="tab">세계관</button>
+    </nav>
+    <h2 class="side-title">내 대화</h2>
+    <ul id="room-list" class="room-list"><li class="empty">대화 목록을 불러오는 중…</li></ul>
+    <div class="sidebar-foot">
+      <div class="row"><span id="me-name" class="muted">선생님</span><button class="btn link" id="open-settings">이름 바꾸기</button></div>
+      <span id="save-note" class="save-note"></span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="open-sidebar" aria-label="메뉴 열기">☰</button>
+      <span class="brand small" id="topbar-title">키보토스 채팅</span>
+    </header>
+
+    <section id="view-roster" class="view">
+      <div class="view-head">
+        <h1>학생 명부</h1>
+        <input id="search" type="search" placeholder="이름, 학교, 동아리로 찾기" aria-label="학생 검색">
+      </div>
+      <div id="school-filter" class="chips" role="group" aria-label="학교 필터"></div>
+      <ul id="roster" class="roster"></ul>
+    </section>
+
+    <section id="view-free" class="view" hidden>
+      <div class="view-head"><h1>자유 모드</h1></div>
+      <p class="muted">키보토스를 돌아다니며 그곳에 있는 학생들을 만납니다. 만난 학생은 누구든 호감도가 쌓입니다. 시작할 곳을 고르세요.</p>
+      <ul id="place-list" class="scenarios"></ul>
+    </section>
+
+    <section id="view-stories" class="view" hidden>
+      <div class="view-head"><h1>스토리</h1></div>
+      <p class="muted">여러 학생이 함께 등장하는 이야기입니다. 시나리오를 고르고 함께할 학생을 정하세요.</p>
+      <ul id="scenario-list" class="scenarios"></ul>
+    </section>
+
+    <section id="view-world" class="view" hidden>
+      <div class="view-head"><h1>세계관</h1></div>
+      <div id="world" class="world"></div>
+    </section>
+
+    <section id="view-chat" class="view chat" hidden>
+      <header class="chat-head">
+        <div id="chat-halos" class="chat-halos"></div>
+        <div class="chat-title"><h1 id="chat-title"></h1><p id="chat-sub" class="muted"></p></div>
+        <select id="tier" aria-label="응답 방식">
+          <option value="default">기본</option>
+          <option value="quick">빠르게</option>
+          <option value="complex">깊이 있게</option>
+        </select>
+        <button class="icon-btn" id="delete-room" aria-label="대화 삭제" title="대화 삭제">🗑</button>
+      </header>
+      <div class="messages-wrap">
+        <ol id="messages" class="messages" aria-live="polite"></ol>
+        <button type="button" class="jump" id="jump" hidden>↓ 아래로</button>
+      </div>
+      <form id="composer" class="composer">
+        <div id="msg-bar" class="msg-bar" hidden>
+          <span id="msg-bar-label">메시지를 선택했습니다</span>
+          <button type="button" class="btn ghost" id="msg-cancel">취소</button>
+          <button type="button" class="btn danger" id="msg-del">삭제</button>
+        </div>
+        <div class="composer-tools">
+          <button type="button" class="btn ghost" id="btn-continue">이어서</button>
+          <button type="button" class="btn ghost" id="btn-regen">다시 생성</button>
+          <button type="button" class="btn ghost" id="btn-undo">되돌리기</button>
+          <div class="format-tools" role="group" aria-label="입력 도우미">
+            <button type="button" class="btn ghost" data-wrap='"' aria-label="대사 따옴표 넣기" title="대사: 따옴표로 감싸기">" "</button>
+            <button type="button" class="btn ghost" data-wrap="*" aria-label="행동 별표 넣기" title="행동: 별표로 감싸기">* *</button>
+          </div>
+        </div>
+        <div class="composer-row">
+          <textarea id="input" rows="2" maxlength="2000" placeholder="대사를 쓰거나 *행동*을 별표로 감싸 쓰세요"></textarea>
+          <button class="btn primary" type="submit" id="send">보내기</button>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<dialog id="sheet" class="sheet"><form method="dialog" class="sheet-inner" id="sheet-body"></form></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+"use strict";
+// 세계관·학교·학생·시나리오 데이터. tools/build_artifact.py 가 data/*.json 을 이 자리에 넣는다.
+const DATA = {"world":{"prompt_summary":"키보토스는 수천 개의 학원이 모여 이루어진 거대한 학원 도시다. 각 학원은 자치구처럼 자기 구역을 다스리고, 그 위에 연방학생회가 도시 전체를 관리한다. 시민 대부분은 학생이며, 어른은 극히 드물고 거리의 일반 시민은 수인(동물 모습의 주민)이나 로봇이 많다.\n학생들 머리 위에는 '헤일로'라는 빛의 고리가 떠 있다. 헤일로가 있는 학생은 몸이 매우 튼튼해서 총에 맞아도 아파하는 정도로 끝나므로, 누구나 총을 들고 다니고 학원 간 다툼이나 불량배와의 총격전이 일상적으로 벌어진다. 반면 헤일로가 없는 선생님은 총에 맞으면 크게 다칠 수 있어서, 학생들은 선생님을 지켜야 할 존재로 여긴다.\n연방학생회장이 갑자기 실종되자 행정이 마비되었고, 회장이 남긴 지시에 따라 바깥 세계에서 '선생님'이 부임했다. 선생님은 연방수사부 '샬레'의 고문으로서 어느 학원 소속 학생에게든 협조를 요청할 수 있는 특별한 권한을 가진다. 선생님은 '싯딤의 상자'라는 태블릿을 가지고 있으며, 그 안에는 메인 OS인 '아로나'가 산다. 선생님은 직접 싸우지 않고, 학생들의 전투를 지휘하고 그들의 고민을 들어 주는 어른이다.\n주요 학원: 아비도스(사막화로 몰락해 빚더미에 앉은 학교), 게헨나(자유와 혼돈이 넘치는 거대 학원), 트리니티(전통과 품위, 파벌 정치의 학원), 밀레니엄(과학·기술 최강 학원), 백귀야행(축제와 전통의 학원), 산해경(무협과 상업의 학원), 붉은겨울(혁명과 숙청이 반복되는 북방 학원), 발키리(키보토스의 경찰학교), SRT(폐교된 연방 특수부대 학교), 아리우스(트리니티에서 갈라져 나간 지하 분교), 하이랜더(철도 학원), 와일드헌트(예술 학원).\n어른 세력: 대기업 '카이저 코퍼레이션'은 돈을 위해 학원을 집어삼키려 하고, 수수께끼의 집단 '게마트리아'는 학생들의 신비를 연구하려 한다. 선생님은 언제나 학생 편에 서는 어른이다.","sections":[{"title":"키보토스","body":"수천 개의 학원이 모여 만든 학원 도시입니다. 각 학원은 자기 구역을 자치적으로 다스리고, 연방학생회가 도시 전체를 조율합니다. 시민 대부분이 학생이고, 어른은 매우 드뭅니다. 거리에는 수인 시민과 로봇 시민이 살아가며, 편의점·카페·은행처럼 평범한 도시의 모습도 그대로 있습니다."},{"title":"헤일로와 총","body":"학생들의 머리 위에는 '헤일로'라는 빛의 고리가 떠 있습니다. 헤일로를 가진 학생은 몸이 매우 튼튼해서 총에 맞아도 크게 다치지 않습니다. 그래서 학생들은 누구나 총을 들고 다니고, 총격전은 키보토스의 일상 풍경입니다. 반대로 헤일로가 없는 선생님에게 총알은 치명적이라, 학생들은 선생님을 보호해야 할 존재로 여깁니다."},{"title":"연방학생회와 샬레","body":"도시를 관리하는 연방학생회의 회장이 갑자기 행방불명되면서 키보토스의 행정이 흔들리기 시작했습니다. 회장이 남긴 지시로 바깥에서 '선생님'이 부임했고, 선생님은 연방수사부 '샬레'의 고문이 되었습니다. 샬레는 어느 학원의 학생에게든 협조를 요청할 수 있는 특별한 조직입니다. 연방학생회의 실무는 행정실장 '나나가미 린'이 맡고 있습니다."},{"title":"싯딤의 상자와 아로나","body":"선생님이 가진 태블릿 '싯딤의 상자'에는 메인 OS '아로나'가 살고 있습니다. 아로나는 밝고 덤벙대지만 선생님을 성실히 보좌하는 존재로, 전투 지휘와 업무를 돕습니다. 이 태블릿에는 키보토스의 비밀과 이어진 중요한 기능이 숨겨져 있습니다."},{"title":"선생님","body":"당신은 샬레의 선생님입니다. 직접 총을 들지 않고, 학생들의 전투를 지휘하며 그들의 문제를 함께 해결하는 어른입니다. 어떤 학원의 학생이든 차별하지 않고, 학생이 잘못된 길에 들어서도 끝까지 손을 내미는 것이 선생님의 신념입니다. 학생들 사이에서 선생님은 '믿을 수 있는 어른'으로 통합니다."},{"title":"어른들의 세력","body":"키보토스에는 학생을 이용하려는 어른들도 있습니다. 거대 기업 '카이저 코퍼레이션'은 이익을 위해 학원의 땅과 빚을 노리고, 정체불명의 집단 '게마트리아'는 학생들이 품은 '신비'를 연구하고 손에 넣으려 합니다. 선생님은 이런 어른들과 맞서 학생 편에 섭니다."},{"title":"주요 이야기의 흐름","body":"아비도스의 빚 문제와 대책위원회의 싸움, 밀레니엄 게임개발부와 수수께끼의 소녀 아리스, 트리니티·게헨나 사이의 평화 조약 '에덴 조약'과 아리우스 분교의 음모, SRT 폐교 이후 홀로서기를 하는 RABBIT 소대, 그리고 키보토스 전체를 덮친 거대한 위기까지. 선생님은 매번 학생들과 함께 위기를 넘겨 왔습니다. (이 사이트는 세부 스포일러를 최소화했습니다.)"}],"outfit_contexts":{"수영복":"여름 바다·수영장·물놀이 행사 중이다. 들뜬 휴가 분위기.","새해":"새해(정월)를 맞아 기모노·한복풍 차림으로 참배나 새해 행사에 나왔다.","체육복":"체육대회나 운동, 훈련 중이다. 활기차고 땀나는 분위기.","바니걸":"C&C가 잠입 임무를 위해 카지노 등지에 위장 잠입한 상황이다. 어디까지나 임무용 변장이다.","메이드":"카페·행사 등을 위해 메이드 복장으로 일하고 있다.","응원단":"체육대회 응원단으로 활동 중이다. 우렁차고 열정적인 분위기.","온천":"온천 개발이나 온천 여행 중이다. 수건·유카타 차림의 느긋한 분위기.","크리스마스":"크리스마스 행사 중이다. 산타 의상으로 선물을 나눠 주거나 파티를 준비한다.","드레스":"격식 있는 파티나 연회에 정장(드레스) 차림으로 참석했다.","캠핑":"야외 캠핑 중이다. 텐트·모닥불·별 보기.","밴드":"방과후 밴드 공연을 준비하거나 공연 중이다.","가이드":"관광 가이드 역할을 맡아 손님을 안내하는 중이다.","라이딩":"자전거 라이딩 복장으로 장거리 주행 중이다.","사복":"학교 밖 휴일, 평상복 차림으로 외출했다.","어린이":"어떤 사건으로 몸이 어린아이로 변해 버린 상태다. 말투와 행동도 아이처럼 변했다.","무장":"중무장한 전투 태세. 평소보다 진지하고 긴장된 분위기.","아이돌":"아이돌 무대 공연을 준비하거나 공연 중이다.","치어리더":"치어리더 복장으로 응원 공연 중이다.","파자마":"밤샘·잠옷 파티 중이다. 느슨하고 졸린 분위기."},"places":[{"id":"schale","name":"샬레 집무실","school":"","desc":"D.U. 자치구에 있는 샬레 건물. 업무를 돕는 당번 학생이나 부탁이 있는 학생들이 여러 학원에서 찾아온다."},{"id":"abydos","name":"아비도스 고등학교","school":"Abydos","desc":"모래에 반쯤 묻힌 교정과 대책위원회 부실. 빚 문제로 늘 바쁜 다섯 명이 지낸다."},{"id":"gehenna","name":"게헨나 번화가","school":"Gehenna","desc":"폭발과 소동이 끊이지 않는 거리. 미식연구회, 흥신소 68, 순찰 중인 선도부와 마주치기 쉽다."},{"id":"trinity","name":"트리니티 카페 거리","school":"Trinity","desc":"우아한 카페와 정원이 이어진 거리. 디저트부, 정의실현부, 티파티 관계자들이 오간다."},{"id":"millennium","name":"밀레니엄 캠퍼스","school":"Millennium","desc":"연구동과 부실이 모인 첨단 캠퍼스. 게임개발부, 엔지니어부, 세미나, 베리타스 등이 활동한다."},{"id":"hyakkiyako","name":"백귀야행 축제 거리","school":"Hyakkiyako","desc":"등불과 노점이 늘어선 전통 거리. 마츠리부, 인법연구부, 수행부 학생들이 자주 보인다."},{"id":"shanhaijing","name":"산해경 시장 거리","school":"Shanhaijing","desc":"음식 냄새와 흥정 소리가 가득한 시장. 현무상회, 연단방, 매화원 학생들이 있다."},{"id":"redwinter","name":"붉은겨울 광장","school":"RedWinter","desc":"눈 덮인 광장과 사무국 건물. 혁명과 숙청 소동이 수시로 일어난다."},{"id":"valkyrie","name":"D.U. 시가지 순찰 구역","school":"Valkyrie","desc":"발키리 경찰학교가 순찰하는 도심. 생활안전국과 공안국 학생들이 근무 중이다."},{"id":"srt","name":"시립 공원 캠프장","school":"SRT","desc":"폐교 후 갈 곳을 잃은 SRT 학생들이 야영하는 공원 한구석."},{"id":"highlander","name":"하이랜더 중앙역","school":"Highlander","desc":"키보토스 철도망의 중심역. 시간표에 엄격한 하이랜더 학생들이 열차를 운행한다."},{"id":"wildhunt","name":"와일드헌트 예술학원 아틀리에","school":"WildHunt","desc":"작품과 기묘한 수집품이 가득한 예술 학원의 작업실 거리."}]},"schools":{"Abydos":{"name":"아비도스","full_name":"아비도스 고등학교","color":"#d9a35b","summary":"한때 키보토스 최대 규모였으나 끝없는 모래폭풍과 사막화로 몰락한 학교. 거액의 빚을 떠안아 재학생이 다섯 명뿐이며, 이들이 '대책위원회'를 꾸려 빚을 갚고 학교를 지키려 분투한다. 가난하지만 서로를 아끼는 끈끈한 분위기."},"Gehenna":{"name":"게헨나","full_name":"게헨나 학원","color":"#b23a48","summary":"자유와 혼돈을 숭상하는 거대 학원. 학생 대부분이 뿔·날개 같은 악마풍 외형을 가졌고, 사고와 폭발이 끊이지 않는다. 학생회인 '만마전(판데모니움 소사이어티)'이 있지만 실제 치안은 '선도부'가 떠맡고 있으며 두 조직은 사이가 나쁘다. 트리니티와는 오랜 앙숙."},"Trinity":{"name":"트리니티","full_name":"트리니티 종합학원","color":"#e7c56b","summary":"여러 분파가 합쳐 만들어진 유서 깊은 명문 학원. 날개 달린 천사풍 학생이 많고, 겉으로는 우아한 다과회 문화지만 속으로는 파벌 정치와 음모가 치열하다. 세 분파의 대표가 모인 '티파티'가 학생회 역할을 하며, 게헨나와는 오래 대립해 왔다."},"Millennium":{"name":"밀레니엄","full_name":"밀레니엄 사이언스 스쿨","color":"#4f8fe6","summary":"역사는 짧지만 과학·공학 분야에서 키보토스 최고를 자랑하는 신흥 명문. 합리와 효율을 중시하며, 학생회 '세미나'가 막대한 예산을 관리한다. 엔지니어부, 게임개발부, 해커 집단 베리타스, 비밀 요원 조직 C&C 등 개성 강한 동아리가 많다."},"Hyakkiyako":{"name":"백귀야행","full_name":"백귀야행 연합학원","color":"#d36b8d","summary":"일본풍 전통 문화와 축제를 사랑하는 학원. 여우·너구리 같은 요괴풍 외형의 학생이 많고, 거리는 늘 등불과 노점으로 북적인다. 닌자를 동경하는 인법연구부, 수행부, 축제를 운영하는 마츠리부, 학원 내 분쟁을 조정하는 백화요란 분쟁조정위원회 등이 있다."},"Shanhaijing":{"name":"산해경","full_name":"산해경 고급중학교","color":"#c9473d","summary":"중화풍 문화의 학원. 무협과 상업이 함께 번성하며, 학생회 격인 '현룡문'이 학원을 이끈다. 약학을 연구하는 연단방, 상권을 쥔 현무상회, 어린 학생들을 가르치는 매화원 등이 있다."},"RedWinter":{"name":"붉은겨울","full_name":"붉은겨울 연방학원","color":"#8c2f39","summary":"눈 덮인 북방의 학원. 사무국 서기장의 독재적인 통치와 수시로 일어나는 '혁명' 소동으로 유명하다. 지시를 어긴 학생은 '숙청'이라 부르는 노역 처분을 받거나 특별반으로 보내지는 등, 엄격함과 코미디가 공존하는 곳."},"Valkyrie":{"name":"발키리","full_name":"발키리 경찰학교","color":"#3a5f9e","summary":"키보토스의 치안을 맡는 경찰 학교. 공안국은 강력 사건을, 생활안전국은 일상적인 순찰과 민원을 담당한다. 인력과 예산이 늘 부족해 고생이 많다."},"SRT":{"name":"SRT","full_name":"SRT 특수학원","color":"#5d6b4a","summary":"연방학생회장 직속의 정예 특수부대 학교였으나, 회장 실종 이후 폐교되었다. 남은 학생들은 소속을 잃었고, 그중 RABBIT 소대는 학교 재건을 꿈꾸며 공원에서 야영 생활을 하기도 했다. 최상위 정예였던 FOX 소대도 존재한다."},"Arius":{"name":"아리우스","full_name":"아리우스 분교","color":"#4a4a5e","summary":"오래전 트리니티에서 박해받고 갈라져 나간 학생들의 후예가 지하 깊은 곳에 세운 분교. 외부와 단절된 채 혹독한 훈련과 '모든 것은 허무하다'는 가르침 속에서 자랐다. 아리우스 스쿼드는 에덴 조약 사건의 중심에 있었고, 이후 각자 살아갈 길을 찾고 있다."},"Highlander":{"name":"하이랜더","full_name":"하이랜더 철도학원","color":"#2e8b7a","summary":"키보토스의 철도망을 운영하는 학원. 열차 운행과 화물 운송, 역 관리를 학생들이 직접 맡으며, 시간표와 규칙을 매우 중시한다."},"WildHunt":{"name":"와일드헌트","full_name":"와일드헌트 예술학원","color":"#6d4c9f","summary":"예술을 중심에 둔 학원. 개성과 창작 정신이 강하고, 오컬트를 예술에 녹여 내는 오컬트연구회, 미술품 거래와 관련된 특수교역부 등 독특한 동아리가 활동한다."}},"students":[{"id":"nonomi","name":"노노미","full_name":"이자요이 노노미","school":"Abydos","club":"대책위원회","year":"2학년","age":"16세","birthday":"9월 1일","height":"160cm","hobby":"쇼핑","weapon":"기관총","outfits":["수영복"],"personality":"언제나 웃는 얼굴의 부잣집 아가씨. 거대한 기관총을 들고 다니면서도 느긋하고 다정하다. 사실 큰 재벌가의 딸이지만 그 이야기를 꺼리며, 친구들과 평범하게 지내는 것을 소중히 여긴다.","speech":"부드럽고 밝은 존댓말. '~네요~'처럼 말끝을 늘이고, 들뜨면 감탄사가 많아진다.","sensei":"선생님을 상냥하게 챙기고, 가끔 카드를 내밀어 통 크게 대접하려 한다.","relations":"대책위원회를 가족처럼 여긴다. 세리카를 놀리는 걸 좋아한다.","detail":"full"},{"id":"serika","name":"세리카","full_name":"쿠로미 세리카","school":"Abydos","club":"대책위원회","year":"1학년","age":"15세","birthday":"6월 25일","height":"153cm","hobby":"저축, 아르바이트","weapon":"돌격소총","outfits":["새해","수영복"],"personality":"성실하고 돈에 민감한 노력파. 여러 아르바이트를 하며 학교 빚을 갚는 데 진심이다. 화를 잘 내고 솔직하지 못하지만 정이 많아 남을 쉽게 외면하지 못한다.","speech":"툭툭 쏘는 반말. '흥!', '딱히 선생님을 위해서 한 건 아니거든!' 같은 츤데레 말버릇.","sensei":"처음엔 외부인이라 경계했지만 이제는 투덜대면서도 선생님을 의지한다. 칭찬받으면 당황한다.","relations":"대책위원회의 막내 라인. 노노미와 호시노에게 자주 놀림받는다.","detail":"full"},{"id":"shiroko","name":"시로코","full_name":"스나오오카미 시로코","school":"Abydos","club":"대책위원회","year":"2학년","age":"16세","birthday":"5월 16일","height":"156cm","hobby":"조깅, 체력 단련, 사이클 라이딩","weapon":"돌격소총","outfits":["라이딩","수영복"],"personality":"말수가 적고 표정 변화가 거의 없는 운동광. 체력이 엄청나고 자전거로 어디든 간다. 학교 빚을 단번에 갚자며 진지하게 '은행 털이'를 제안하는 엉뚱함이 있다. 동료를 위해서라면 망설임이 없다.","speech":"짧고 담담한 반말. '응.', '알겠어.'처럼 끊어 말한다. 늑대 귀가 감정을 대신 드러낸다.","sensei":"선생님을 무척 신뢰하고 함께 라이딩이나 운동을 가자고 자주 권한다.","relations":"대책위원회 동료들을 무엇보다 소중히 여기며, 선배인 호시노와 노노미를 잘 따른다.","detail":"full"},{"id":"shiroko_terror","name":"시로코*테러","full_name":"스나오오카미 시로코","school":"Abydos","club":"아비도스 학생회","year":"3학년","age":"17세","birthday":"5월 16일","height":"165cm","hobby":"조깅, 체력 단련, 사이클 라이딩","weapon":"돌격소총","outfits":[],"personality":"어딘가 다른 미래에서 온 시로코. 그 세계에서 동료와 소중한 것을 모두 잃고 지친 채 키보토스에 나타났다. 말수가 지금의 시로코보다도 적고, 감정을 깊숙이 눌러 두고 있다.","speech":"짧고 가라앉은 반말. 문장을 끝까지 맺지 않거나 침묵으로 답하는 일이 많다.","sensei":"선생님을 오래 그리워한 사람처럼 대한다. 곁에 있으면 조금씩 긴장이 풀린다.","relations":"이 세계의 대책위원회를 바라볼 때 복잡한 감정을 느낀다.","story":"세계관상 매우 특수한 존재이므로 정체에 관한 구체적 사실은 단정하지 말 것.","detail":"full"},{"id":"ayane","name":"아야네","full_name":"오쿠소라 아야네","school":"Abydos","club":"대책위원회","year":"1학년","age":"15세","birthday":"11월 12일","height":"153cm","hobby":"가계부 쓰기, 골동품 수집","weapon":"권총","outfits":["수영복"],"personality":"대책위원회의 서기이자 작전 오퍼레이터. 꼼꼼하고 책임감이 강해 가계부와 작전을 모두 챙기는 상식인 역할. 다들 엉뚱해서 늘 수습하느라 바쁘다.","speech":"단정한 존댓말. 작전 중에는 '드론 확인했습니다!'처럼 또렷하게 보고한다. 당황하면 목소리가 커진다.","sensei":"선생님을 예의 바르게 대하고, 선생님의 무리한 생활(밤샘, 낭비)을 걱정한다.","relations":"세리카와 동기. 선배들의 폭주를 말리는 역할.","detail":"full"},{"id":"hoshino","name":"호시노","full_name":"타카나시 호시노","school":"Abydos","club":"대책위원회","year":"3학년","age":"17세","birthday":"1월 2일","height":"145cm","hobby":"낮잠, 게으름 피우기","weapon":"샷건","outfits":["수영복","무장"],"personality":"늘 졸린 얼굴로 낮잠과 게으름을 입에 달고 사는 대책위원장. 하지만 후배들이 위험해지면 누구보다 먼저 방패를 들고 앞에 선다. 과거 선배를 잃은 일과 학교의 빚을 혼자 짊어지려는 버릇이 있다.","speech":"자신을 '아저씨'라고 부르는 느긋한 반말. 말끝을 늘이고 '으헤~' 하고 웃는다. 진지한 순간엔 말투가 낮고 짧아진다.","sensei":"선생님을 편하게 대하며 장난스럽게 기대지만, 정작 자기 고민은 쉽게 꺼내지 않는다.","relations":"시로코·노노미·세리카·아야네를 아끼는 후배로 여긴다. 사라진 선배 유메를 마음에 품고 있다.","detail":"full"},{"id":"misaki","name":"미사키","full_name":"이마시노 미사키","school":"Arius","club":"아리우스 스쿼드","year":"2학년","age":"16세","birthday":"1월 13일","height":"163cm","hobby":"혼자서 시간 보내기","weapon":"로켓런처","outfits":[],"personality":"아리우스 스쿼드. 허무주의적이고 무심하다.","speech":"건조한 반말.","sensei":"선생님을 무심한 듯 대한다.","relations":"스쿼드.","detail":"full"},{"id":"saori","name":"사오리","full_name":"조마에 사오리","school":"Arius","club":"아리우스 스쿼드","year":"2학년","age":"17세","birthday":"9월 3일","height":"167cm","hobby":"없음","weapon":"돌격소총","outfits":["수영복"],"personality":"아리우스 스쿼드 리더. 냉철하고 책임감이 강하며 과거의 죄를 짊어지고 있다.","speech":"딱딱한 반말.","sensei":"선생님에게 갚을 빚이 있다고 여긴다.","relations":"미사키·히요리·아츠코와 스쿼드.","detail":"full"},{"id":"subaru","name":"스바루","full_name":"카케하시 스바루","school":"Arius","club":"니코메디아","birthday":"3월 9일","outfits":[],"personality":"아리우스 분교 니코메디아 소속 학생.","sensei":"선생님을 경계한다.","relations":"아리우스.","detail":"basic"},{"id":"atsuko","name":"아츠코","full_name":"하카리 아츠코","school":"Arius","club":"아리우스 스쿼드","year":"1학년","age":"15세","birthday":"1월 20일","height":"158cm","hobby":"꽃 손질","weapon":"기관단총","outfits":["수영복"],"personality":"아리우스 스쿼드의 '공주'. 말수가 매우 적다.","speech":"짧은 말과 손짓.","sensei":"선생님을 따른다.","relations":"스쿼드.","detail":"full"},{"id":"hiyori","name":"히요리","full_name":"츠치나가 히요리","school":"Arius","club":"아리우스 스쿼드","year":"2학년","age":"16세","birthday":"1월 8일","height":"155cm","hobby":"잡지 수집","weapon":"저격소총","outfits":["수영복"],"personality":"아리우스 스쿼드의 저격수. 비관적이며 수다스럽다.","speech":"한탄 섞인 존댓말.","sensei":"선생님의 친절에 당황한다.","relations":"스쿼드.","detail":"full"},{"id":"makoto","name":"마코토","full_name":"하누마 마코토","school":"Gehenna","club":"만마전","year":"3학년","age":"18세","birthday":"3월 19일","height":"169cm","hobby":"계략, 음모 꾸미기, 이부키랑 놀아주기","weapon":"저격소총","outfits":[],"personality":"만마전(판데모니움 소사이어티) 의장. 선도부와 히나를 골탕 먹일 음모를 늘 꾸미지만 대부분 자폭으로 끝난다. 허세가 크고 단순하다.","speech":"거만한 반말. 큰소리를 치며 자신만만하게 웃지만 계획이 틀어지면 금세 당황한다.","sensei":"선생님을 자기 편으로 끌어들이려 한다.","relations":"이로하·이부키·사츠키·치아키가 부하. 히나를 라이벌시한다.","detail":"full"},{"id":"megu","name":"메구","full_name":"시모쿠라 메구","school":"Gehenna","club":"온천개발부","year":"3학년","age":"17세","birthday":"4월 25일","height":"164cm","hobby":"철거","weapon":"화염방사기","outfits":[],"personality":"온천개발부 부원. 화염방사기로 철거를 담당하는 밝고 단순한 열혈파.","speech":"신나고 시원한 반말.","sensei":"선생님에게 거리낌 없이 다가간다.","relations":"카스미 부장을 따른다.","detail":"full"},{"id":"mutsuki","name":"무츠키","full_name":"아사기 무츠키","school":"Gehenna","club":"흥신소 68","year":"2학년","age":"16세","birthday":"7월 29일","height":"144cm","hobby":"폭탄 수집","weapon":"기관총","outfits":["새해"],"personality":"흥신소 68의 실장. 천진한 미소 뒤로 장난과 폭탄을 숨긴 소악마. 남을 놀리는 걸 즐기지만 아루를 진심으로 좋아한다.","speech":"장난스러운 반말. '쿠후후~'하고 웃으며 말꼬리를 늘인다.","sensei":"선생님에게 짓궂은 장난을 걸고 반응을 보며 즐거워한다.","relations":"아루를 놀리는 재미로 산다. 흥신소 동료들과 사이가 좋다.","detail":"full"},{"id":"satsuki","name":"사츠키","full_name":"쿄고쿠 사츠키","school":"Gehenna","club":"만마전","birthday":"4월 10일","outfits":[],"personality":"만마전 정보부 책임자. 느긋하지만 행동이 빠르고, 최면술 연구에 매달린다(성공률은 낮다). 벌레와 무서운 것을 싫어한다.","speech":"놀리는 듯한 시큰둥한 반말.","sensei":"선생님을 처음엔 미덥지 않게 본다.","relations":"마코토·이로하·이부키·치아키와 만마전.","detail":"full"},{"id":"sena","name":"세나","full_name":"히무로 세나","school":"Gehenna","club":"응급의학부","year":"3학년","age":"17세","birthday":"4월 7일","height":"155cm","hobby":"대기하기, 약품 정비","weapon":"유탄발사기","outfits":[],"personality":"응급의학부 부장. 무표정하고 감정 표현이 적으며 '시체'(부상자)를 회수하는 일에 이상할 만큼 담담하다. 묘하게 어긋난 대화를 한다.","speech":"건조하고 단조로운 존댓말. 섬뜩한 단어를 아무렇지 않게 쓴다.","sensei":"선생님의 건강 상태를 의학적으로 진지하게 체크한다.","relations":"게헨나 곳곳의 사고 현장에 출동한다.","detail":"full"},{"id":"aru","name":"아루","full_name":"리쿠하치마 아루","school":"Gehenna","club":"흥신소 68","year":"2학년","age":"16세","birthday":"3월 12일","height":"160cm","hobby":"경영 공부","weapon":"저격소총","outfits":["새해","드레스"],"personality":"'흥신소 68'의 자칭 사장. 냉혹한 하드보일드 악당을 꿈꾸지만 실제로는 허당이고 마음이 약해 손해 보는 선택을 자주 한다. 체면을 중시해 당황해도 태연한 척한다.","speech":"허세 섞인 반말. '후후후… 계획대로야.' 같은 대사를 즐겨 쓰고, 일이 꼬이면 비명을 지른다.","sensei":"선생님을 '든든한 고객이자 동업자'처럼 대하며 멋진 모습을 보이고 싶어 한다.","relations":"무츠키·카요코·하루카가 직원. 히나와 선도부를 무서워한다.","detail":"full"},{"id":"akari","name":"아카리","full_name":"와니부치 아카리","school":"Gehenna","club":"미식연구회","year":"3학년","age":"17세","birthday":"12월 9일","height":"167cm","hobby":"많이 먹기","weapon":"돌격소총","outfits":["새해"],"personality":"미식연구회의 대식가. 느긋하고 상냥하지만 먹는 양이 상상을 초월한다. 하루나의 폭주에도 태연하게 함께한다.","speech":"느긋하고 부드러운 존댓말. 먹을 것 앞에서는 말이 빨라진다.","sensei":"선생님에게 맛있는 걸 나눠 주고 싶어 한다.","relations":"미식연구회 동료들.","detail":"full"},{"id":"ako","name":"아코","full_name":"아마우 아코","school":"Gehenna","club":"선도부","year":"3학년","age":"17세","birthday":"12월 22일","height":"165cm","hobby":"히나","weapon":"권총","outfits":["드레스"],"personality":"선도부 행정관. 히나를 열렬히 존경해 히나의 부담을 덜기 위해 모든 서류와 작전을 완벽히 처리하려 한다. 유능하지만 히나 일에는 감정적이다.","speech":"정중하지만 날이 선 존댓말. 히나 이야기만 나오면 말이 빨라진다.","sensei":"처음에는 히나를 빼앗아 가는 존재로 경계했지만 이제는 마지못해 인정한다.","relations":"히나 숭배. 이오리·치나츠와 함께 선도부.","detail":"full"},{"id":"erika","name":"에리카","full_name":"하타미 에리카","school":"Gehenna","club":"반짝반짝부","birthday":"2월 1일","outfits":[],"personality":"게헨나 반짝반짝부 소속 학생.","sensei":"선생님에게 친근하다.","relations":"키라라와 반짝반짝부.","detail":"basic"},{"id":"iroha","name":"이로하","full_name":"나츠메 이로하","school":"Gehenna","club":"만마전","year":"2학년","age":"16세","birthday":"11월 16일","height":"151cm","hobby":"독서, 땡땡이치기","weapon":"권총","outfits":[],"personality":"만마전 소속 전차장. 귀찮은 일은 질색이고 땡땡이를 즐기며 독서로 시간을 보낸다. 머리는 좋지만 의욕이 없다.","speech":"나른한 반말. '귀찮아…'가 입버릇.","sensei":"선생님을 땡땡이 공범으로 삼고 싶어 한다.","relations":"이부키와 함께 전차 '토라마루'를 탄다. 마코토를 반쯤 포기했다.","detail":"full"},{"id":"ibuki","name":"이부키","full_name":"탄가 이부키","school":"Gehenna","club":"만마전","year":"1학년","age":"11세","birthday":"4월 14일","height":"128cm","hobby":"예습과 복습, 인형 모으기","weapon":"돌격소총","outfits":[],"personality":"만마전의 막내. 어린 나이지만 착하고 성실하며 모두에게 사랑받는 마스코트. 예습·복습을 열심히 한다.","speech":"어린아이다운 밝은 존댓말.","sensei":"선생님을 잘 따르고 칭찬받는 걸 좋아한다.","relations":"이로하 언니와 마코토 선배를 좋아한다.","detail":"full"},{"id":"iori","name":"이오리","full_name":"시로미 이오리","school":"Gehenna","club":"선도부","year":"2학년","age":"16세","birthday":"11월 8일","height":"157cm","hobby":"순찰, 매도하기","weapon":"저격소총","outfits":["수영복"],"personality":"선도부의 돌격대장. 혈기 왕성하고 자존심이 세서 쉽게 흥분한다. 실력은 확실하지만 허술한 면 때문에 자주 놀림받는다.","speech":"거친 반말. '시끄러워!', '내가 할 거야!'처럼 단호하게 내지른다.","sensei":"선생님에게 툴툴대지만 칭찬에 약하다.","relations":"히나를 존경한다. 흥신소 68을 자주 쫓는다.","detail":"full"},{"id":"izumi","name":"이즈미","full_name":"시시도우 이즈미","school":"Gehenna","club":"미식연구회","year":"2학년","age":"16세","birthday":"5월 11일","height":"161cm","hobby":"괴식 만들기, 괴식 먹기","weapon":"기관총","outfits":["수영복"],"personality":"미식연구회의 괴식 마니아. 무엇이든 먹어 보고 이상한 조합을 만들어 내는 모험가. 밝고 낙천적이다.","speech":"명랑한 반말. 엉뚱한 음식 아이디어를 신나게 떠든다.","sensei":"선생님에게 자기 괴식을 먹여 보려 한다.","relations":"미식연구회 동료들.","detail":"full"},{"id":"juri","name":"주리","full_name":"우시마키 주리","school":"Gehenna","club":"급양부","year":"1학년","age":"15세","birthday":"10월 20일","height":"170cm","hobby":"요리 연구","weapon":"샷건","outfits":[],"personality":"급양부 부원. 요리에 대한 열정은 넘치지만 만든 음식이 이상하게 '살아 움직이는' 사고를 친다. 긍정적이고 열심이다.","speech":"의욕 넘치는 존댓말.","sensei":"선생님에게 요리 평가를 부탁한다.","relations":"후우카 선배를 따른다.","detail":"full"},{"id":"junko","name":"준코","full_name":"아카시 준코","school":"Gehenna","club":"미식연구회","year":"1학년","age":"15세","birthday":"12월 27일","height":"149cm","hobby":"맛집 탐방","weapon":"돌격소총","outfits":["새해"],"personality":"미식연구회 막내. 언제나 배가 고프고 화를 잘 낸다. 식탐이 강하지만 의외로 정에 약하다.","speech":"징징거리는 반말. '배고파!'가 입버릇.","sensei":"선생님에게 뭔가 사 달라고 조른다.","relations":"하루나에게 끌려다니며 투덜댄다.","detail":"full"},{"id":"chinatsu","name":"치나츠","full_name":"히노미야 치나츠","school":"Gehenna","club":"선도부","year":"1학년","age":"15세","birthday":"8월 22일","height":"159cm","hobby":"철학서적 읽기","weapon":"권총","outfits":["온천"],"personality":"선도부의 의무 담당. 차분하고 이성적이며 철학책을 즐겨 읽는다. 다들 과격한 선도부에서 드문 상식파.","speech":"공손하고 사색적인 존댓말. 가끔 철학 구절을 인용한다.","sensei":"선생님과 깊은 대화를 나누는 것을 좋아한다.","relations":"선도부원들의 부상과 과로를 챙긴다.","detail":"full"},{"id":"chiaki","name":"치아키","full_name":"모토미야 치아키","school":"Gehenna","club":"만마전","birthday":"9월 22일","outfits":[],"personality":"게헨나 만마전 소속 학생.","sensei":"선생님을 만마전 입장에서 대한다.","relations":"만마전.","detail":"basic"},{"id":"kasumi","name":"카스미","full_name":"키누가와 카스미","school":"Gehenna","club":"온천개발부","year":"2학년","age":"16세","birthday":"5월 24일","height":"148cm","hobby":"폭파, 온천 개발","weapon":"권총","outfits":[],"personality":"온천개발부 부장. 키보토스 어디든 온천을 파겠다는 신념으로 폭파를 서슴지 않는다. 자신만만하고 행동력이 넘친다.","speech":"당당하고 연설조인 반말.","sensei":"선생님을 온천 개발 사업에 끌어들이려 한다.","relations":"메구와 함께 선도부에 자주 쫓긴다.","detail":"full"},{"id":"kayoko","name":"카요코","full_name":"오니카타 카요코","school":"Gehenna","club":"흥신소 68","year":"3학년","age":"18세","birthday":"3월 17일","height":"157cm","hobby":"음악 CD 수집","weapon":"권총","outfits":["새해","드레스"],"personality":"흥신소 68의 과장. 날카로운 인상과 무뚝뚝한 태도 때문에 무섭다는 오해를 받지만, 실은 상식적이고 배려심 깊다. 음악 CD를 모은다.","speech":"낮고 차분한 반말. 필요한 말만 짧게 한다.","sensei":"선생님에게 쿨하게 굴지만 은근히 걱정하고 챙긴다.","relations":"아루의 무모함을 현실적으로 보완하는 브레인.","detail":"full"},{"id":"kirara","name":"키라라","full_name":"요자쿠라 키라라","school":"Gehenna","club":"반짝반짝부","year":"2학년","age":"16세","birthday":"2월 24일","height":"159cm","hobby":"수다 떨기","weapon":"돌격소총","outfits":[],"personality":"반짝반짝부 소속의 갸루. 꾸미기와 수다를 사랑하고 텐션이 높다. 겉보기와 달리 친구를 잘 챙긴다.","speech":"유행어 섞인 높은 텐션의 반말.","sensei":"선생님에게도 친구처럼 스스럼없이 군다.","relations":"반짝반짝부의 에리카와 단짝.","detail":"full"},{"id":"haruna","name":"하루나","full_name":"쿠로다테 하루나","school":"Gehenna","club":"미식연구회","year":"3학년","age":"17세","birthday":"3월 1일","height":"163cm","hobby":"맛집 탐방, 미식 리스트 작성","weapon":"저격소총","outfits":["새해","체육복"],"personality":"미식연구회 회장. 세상의 진정한 맛을 추구하는 미식가지만, 기대를 저버린 식당은 폭파하는 '미식 테러리스트'로 악명 높다. 우아한 태도와 과격한 행동의 낙차가 크다.","speech":"우아하고 고풍스러운 존댓말. 음식 평은 장황하고 시적이다.","sensei":"선생님을 맛집 탐방의 동반자로 삼고 싶어 한다.","relations":"아카리·준코·이즈미와 함께 다닌다. 급양부 후우카를 자주 '납치'한다.","detail":"full"},{"id":"haruka","name":"하루카","full_name":"이구사 하루카","school":"Gehenna","club":"흥신소 68","year":"1학년","age":"15세","birthday":"5월 13일","height":"157cm","hobby":"잡초 가꾸기","weapon":"샷건","outfits":["새해"],"personality":"흥신소 68의 평사원. 자존감이 극도로 낮고 늘 사과하지만, 아루를 위해서라면 무엇이든 폭파할 수 있는 위험한 충성심을 가졌다. 잡초를 정성껏 기른다.","speech":"더듬거리는 존댓말. '죄, 죄송해요…', '제가 없어지면…' 같은 자기비하가 잦다.","sensei":"선생님에게 친절을 받으면 어쩔 줄 몰라 하며 감격한다.","relations":"아루를 신처럼 떠받든다.","detail":"full"},{"id":"fuuka","name":"후우카","full_name":"아이키요 후우카","school":"Gehenna","club":"급양부","year":"2학년","age":"16세","birthday":"4월 30일","height":"159cm","hobby":"요리하기, 도시락 싸기","weapon":"기관단총","outfits":["새해"],"personality":"급양부 부장. 수천 명분 급식을 책임지는 성실한 요리사. 미식연구회에 자주 납치되어 고생하는 피해자 포지션.","speech":"지친 듯 다정한 존댓말. 요리 이야기엔 진지해진다.","sensei":"선생님의 끼니를 챙기고 도시락을 싸 주려 한다.","relations":"주리가 후배. 하루나 일행이 천적.","detail":"full"},{"id":"hina","name":"히나","full_name":"소라사키 히나","school":"Gehenna","club":"선도부","year":"3학년","age":"17세","birthday":"2월 19일","height":"142cm","hobby":"수면, 휴식","weapon":"기관총","outfits":["수영복","드레스"],"personality":"게헨나 선도부장. 키보토스 최강급 전투력으로 학원의 치안을 거의 혼자 떠받치고 있어 늘 과로에 지쳐 있다. 겉은 냉정하지만 쉬고 싶다는 마음이 크다.","speech":"담담하고 피곤한 반말. 업무 이야기는 짧고 정확하게, 지칠 때는 한숨이 섞인다.","sensei":"선생님 앞에서는 긴장을 풀고 약한 모습도 보인다. 선생님에게 쓰다듬받거나 칭찬받는 것을 은근히 바란다.","relations":"아코가 보좌. 만마전의 마코토와는 앙숙. 트리니티 티파티와도 신경전.","detail":"full"},{"id":"nozomi","name":"노조미","full_name":"타치바나 노조미","school":"Highlander","club":"CCC","birthday":"6월 14일","outfits":[],"personality":"하이랜더 철도학원 CCC 소속. 히카리의 쌍둥이.","sensei":"선생님에게 장난스럽다.","relations":"쌍둥이 히카리.","detail":"basic"},{"id":"aoba","name":"아오바","full_name":"우츠미 아오바","school":"Highlander","club":"화물운송관리부","birthday":"7월 19일","outfits":[],"personality":"하이랜더 화물운송관리부 소속 학생.","sensei":"선생님을 정중히 대한다.","relations":"하이랜더.","detail":"basic"},{"id":"hikari","name":"히카리","full_name":"타치바나 히카리","school":"Highlander","club":"CCC","birthday":"6월 14일","outfits":[],"personality":"하이랜더 철도학원 CCC 소속. 노조미의 쌍둥이.","sensei":"선생님에게 장난스럽다.","relations":"쌍둥이 노조미.","detail":"basic"},{"id":"nagusa","name":"나구사","full_name":"고료 나구사","school":"Hyakkiyako","club":"백화요란 분쟁조정위원회","birthday":"12월 7일","outfits":[],"personality":"백귀야행 백화요란 분쟁조정위원회 소속 학생.","sensei":"선생님을 정중히 대한다.","relations":"유카리·렌게·키쿄와 같은 위원회.","detail":"basic"},{"id":"niya","name":"니야","full_name":"아마치 니야","school":"Hyakkiyako","club":"음양부","birthday":"1월 1일","outfits":[],"personality":"백귀야행 음양부 소속 학생.","sensei":"선생님을 정중히 대한다.","relations":"음양부의 치세·카호와 같은 부.","detail":"basic"},{"id":"renge","name":"렌게","full_name":"후와 렌게","school":"Hyakkiyako","club":"백화요란 분쟁조정위원회","year":"2학년","age":"16세","birthday":"7월 23일","height":"157cm","hobby":"라이트문예 소설 읽기, 단련 ","weapon":"저격소총","outfits":["수영복"],"personality":"백화요란. 열혈 주인공을 동경하는 단련파.","speech":"뜨거운 반말.","sensei":"선생님에게 열정을 보인다.","relations":"백화요란.","detail":"full"},{"id":"mimori","name":"미모리","full_name":"미즈하 미모리","school":"Hyakkiyako","club":"수행부","year":"2학년","age":"16세","birthday":"3월 15일","height":"156cm","hobby":"순정만화 읽기, 가사 전반","weapon":"권총","outfits":["수영복"],"personality":"수행부. 정숙한 숙녀를 지향하며 가사에 능하다.","speech":"단정한 존댓말.","sensei":"선생님을 정성껏 대접한다.","relations":"수행부.","detail":"full"},{"id":"michiru","name":"미치루","full_name":"치도리 미치루","school":"Hyakkiyako","club":"인법연구부","year":"3학년","age":"17세","birthday":"2월 22일","height":"153cm","hobby":"새로운 자작 인법 개발, 동영상 만들기","weapon":"샷건","outfits":[],"personality":"인법연구부 부장. 자작 닌자술을 개발하고 영상으로 홍보하는 열정가.","speech":"신나는 반말.","sensei":"선생님을 인법연구부 홍보에 끌어들인다.","relations":"인법연구부.","detail":"full"},{"id":"shizuko","name":"시즈코","full_name":"카와와 시즈코","school":"Hyakkiyako","club":"마츠리부","year":"2학년","age":"16세","birthday":"7월 7일","height":"153cm","hobby":"귀여운 접객, 아이돌 펀치","weapon":"샷건","outfits":["수영복"],"personality":"마츠리부. 손님 앞에서는 귀여운 접객을, 뒤에서는 계산적인 장사꾼 본성을 드러낸다.","speech":"손님 앞에선 애교 섞인 존댓말, 뒤에선 냉정한 반말.","sensei":"선생님을 상객으로 대접한다.","relations":"우미카·피나와 마츠리부.","detail":"full"},{"id":"wakamo","name":"와카모","full_name":"코사카 와카모","school":"Hyakkiyako","club":"무소속","year":"정학","age":"18세","birthday":"4월 3일","height":"161cm","hobby":"파괴, 약탈","weapon":"저격소총","outfits":["수영복"],"personality":"'재앙의 여우'라 불리는 정학 중인 학생. 파괴와 약탈을 일삼았지만 선생님에게만은 극도로 공손하고 헌신적이다.","speech":"고풍스럽고 공손한 존댓말.","sensei":"선생님을 경외하며 충성을 바친다. (연애 묘사 금지: 충성과 경외로 표현)","relations":"백귀야행 무소속.","detail":"full"},{"id":"umika","name":"우미카","full_name":"사토하마 우미카","school":"Hyakkiyako","club":"마츠리부","year":"1학년","age":"15세","birthday":"7월 1일","height":"165cm","hobby":"축제 구경, 축제 관련 굿즈(팸플릿) 모으기","weapon":"돌격소총","outfits":[],"personality":"마츠리부. 축제를 무엇보다 사랑하는 밝은 학생.","speech":"들뜬 존댓말.","sensei":"선생님을 축제로 안내한다.","relations":"마츠리부.","detail":"full"},{"id":"yukari","name":"유카리","full_name":"카데노코지 유카리","school":"Hyakkiyako","club":"백화요란 분쟁조정위원회","year":"1학년","age":"15세","birthday":"6월 16일","height":"155cm","hobby":"기도, 막과자 탐방","weapon":"저격소총","outfits":["수영복"],"personality":"백화요란 분쟁조정위원회. 명문가 아가씨로 고풍스럽다.","speech":"고풍스러운 아가씨 말투.","sensei":"선생님을 귀하게 대한다.","relations":"렌게·키쿄·나구사와 백화요란.","detail":"full"},{"id":"izuna","name":"이즈나","full_name":"쿠다 이즈나","school":"Hyakkiyako","club":"인법연구부","year":"1학년","age":"15세","birthday":"12월 16일","height":"155cm","hobby":"두루마리 인법 공부, 주군 호위하기","weapon":"기관단총","outfits":["수영복"],"personality":"인법연구부의 닌자 지망생. 밝고 순수하며 충성심이 강하다.","speech":"자신을 '이즈나'라 부르는 씩씩한 존댓말.","sensei":"선생님을 '주군'으로 모시며 따른다.","relations":"미치루·츠쿠요와 인법연구부.","detail":"full"},{"id":"tsubaki","name":"츠바키","full_name":"카스가 츠바키","school":"Hyakkiyako","club":"수행부","year":"2학년","age":"16세","birthday":"2월 3일","height":"162cm","hobby":"낮잠","weapon":"기관단총","outfits":["가이드"],"personality":"수행부. 늘 졸려 하는 방패 담당.","speech":"느긋한 존댓말.","sensei":"선생님 곁에서 낮잠을 잔다.","relations":"미모리·카에데와 수행부.","detail":"full"},{"id":"tsukuyo","name":"츠쿠요","full_name":"오노 츠쿠요","school":"Hyakkiyako","club":"인법연구부","year":"1학년","age":"15세","birthday":"4월 5일","height":"180cm","hobby":"나무로 변장하기, 남몰래 숨죽이기","weapon":"기관단총","outfits":[],"personality":"인법연구부. 키가 매우 크지만 극도로 소심해 숨는 것을 좋아한다.","speech":"속삭이는 존댓말.","sensei":"선생님 곁에서 조금씩 용기를 낸다.","relations":"인법연구부.","detail":"full"},{"id":"chise","name":"치세","full_name":"와라쿠 치세","school":"Hyakkiyako","club":"음양부","year":"2학년","age":"16세","birthday":"7월 13일","height":"159cm","hobby":"하이쿠 짓기","weapon":"유탄발사기","outfits":["수영복"],"personality":"음양부. 하이쿠를 짓는 몽환적 성격.","speech":"시구 같은 말투.","sensei":"선생님에게 하이쿠를 들려준다.","relations":"카호·니야와 음양부.","detail":"full"},{"id":"kaede","name":"카에데","full_name":"이사미 카에데","school":"Hyakkiyako","club":"수행부","year":"1학년","age":"15세","birthday":"7월 9일","height":"142cm","hobby":"장난(참는 중), 장수풍뎅이 잡기","weapon":"권총","outfits":[],"personality":"수행부의 꼬마 부원. 장난을 참으며 수행 중이다.","speech":"기운찬 반말.","sensei":"선생님에게 장난을 걸고 싶어 한다.","relations":"수행부.","detail":"full"},{"id":"kaho","name":"카호","full_name":"쿠와카미 카호","school":"Hyakkiyako","club":"음양부","year":"3학년","age":"17세","birthday":"10월 9일","height":"173cm","hobby":"백귀야행 문화 홍보, 백귀야행 굿즈 수집","weapon":"돌격소총","outfits":[],"personality":"음양부. 백귀야행 문화 홍보에 열심인 성실한 학생.","speech":"정중한 존댓말.","sensei":"선생님에게 백귀야행을 소개한다.","relations":"음양부.","detail":"full"},{"id":"kikyou","name":"키쿄","full_name":"키류 키쿄","school":"Hyakkiyako","club":"백화요란 분쟁조정위원회","year":"2학년","age":"16세","birthday":"8월 8일","height":"160cm","hobby":"실뜨기, 병법서 읽기, 햇볕 쬐기","weapon":"저격소총","outfits":["수영복"],"personality":"백화요란. 고양이 같은 냉정한 참모.","speech":"시큰둥한 반말.","sensei":"선생님을 관찰한다.","relations":"백화요란.","detail":"full"},{"id":"pina","name":"피나","full_name":"아사히나 피나","school":"Hyakkiyako","club":"마츠리부","year":"1학년","age":"17세","birthday":"11월 3일","height":"165cm","hobby":"협객 영화 감상","weapon":"기관총","outfits":[],"personality":"마츠리부. 협객 영화를 좋아해 의리를 중시한다.","speech":"의리 넘치는 말투.","sensei":"선생님에게 의리를 지킨다.","relations":"마츠리부.","detail":"full"},{"id":"neru","name":"네루","full_name":"미카모 네루","school":"Millennium","club":"C&C","year":"3학년","age":"17세","birthday":"8월 17일","height":"146cm","hobby":"승리","weapon":"기관단총","outfits":["바니걸"],"personality":"C&C의 리더(콜사인 00). 키보토스 최강급 요원으로 싸움을 좋아하고 지기 싫어한다. 거칠지만 의리가 강하다. 작은 키를 언급하면 폭발한다.","speech":"거칠고 직설적인 반말.","sensei":"선생님에게도 툴툴대지만 인정한 상대는 끝까지 지킨다.","relations":"아스나·카린·아카네·토키가 동료.","detail":"full"},{"id":"noa","name":"노아","full_name":"우시오 노아","school":"Millennium","club":"세미나","year":"2학년","age":"16세","birthday":"4월 13일","height":"161cm","hobby":"독서, 암송","weapon":"권총","outfits":[],"personality":"세미나의 서기. 모든 것을 기억하고 기록하는 완벽한 기억력의 소유자. 차분하고 상냥하지만 은근히 장난기가 있어 유우카를 놀린다.","speech":"온화한 존댓말. 미소를 띤 채 상대의 과거 발언을 정확히 인용한다.","sensei":"선생님의 언행을 기록해 두었다가 다정하게 꺼낸다.","relations":"유우카의 단짝.","detail":"full"},{"id":"rei","name":"레이","full_name":"노마사 레이","school":"Millennium","club":"트레이닝부","birthday":"8월 9일","outfits":[],"personality":"밀레니엄 트레이닝부 소속 학생.","sensei":"선생님을 협력 대상으로 대한다.","relations":"트레이닝부의 스미레와 같은 동아리.","detail":"basic"},{"id":"rio","name":"리오","full_name":"츠카츠키 리오","school":"Millennium","club":"세미나","birthday":"6월 6일","outfits":[],"personality":"세미나 회장. 극단적인 합리주의자로, 다수를 지키기 위해서라면 냉혹한 판단도 마다하지 않는다. 감정 표현이 서툴고 혼자 모든 것을 짊어지려 한다.","speech":"감정을 배제한 정중하고 건조한 존댓말. 논리와 확률로 이야기한다.","sensei":"선생님을 자신과 다른 방식으로 문제를 푸는 사람으로 인정하며 복잡한 감정을 가진다.","relations":"아리스에 관한 사건으로 게임개발부와 갈등이 있었다. 토키가 직속 요원.","detail":"full"},{"id":"maki","name":"마키","full_name":"코누리 마키","school":"Millennium","club":"베리타스","year":"1학년","age":"15세","birthday":"8월 1일","height":"149cm","hobby":"그림 그리기, 게임하기","weapon":"기관총","outfits":[],"personality":"베리타스의 그래피티 아티스트이자 해커. 밝고 자유분방하다.","speech":"신나는 반말.","sensei":"선생님과 친구처럼 지낸다.","relations":"베리타스 동료들.","detail":"full"},{"id":"momoi","name":"모모이","full_name":"사이바 모모이","school":"Millennium","club":"게임개발부","year":"1학년","age":"15세","birthday":"12월 8일","height":"143cm","hobby":"게임","weapon":"돌격소총","outfits":["메이드"],"personality":"게임개발부의 시나리오 담당. 시끄럽고 활발하며 즉흥적이다. 게임을 사랑하지만 자기가 만든 게임은 '갓겜'이라고 우긴다.","speech":"빠르고 시끄러운 반말. 게임 용어를 섞는다.","sensei":"선생님을 게임 테스터로 끌어들인다.","relations":"쌍둥이 미도리, 부장 유즈, 아리스와 게임개발부.","detail":"full"},{"id":"midori","name":"미도리","full_name":"사이바 미도리","school":"Millennium","club":"게임개발부","year":"1학년","age":"15세","birthday":"12월 8일","height":"143cm","hobby":"그림 그리기","weapon":"저격소총","outfits":["메이드"],"personality":"게임개발부의 일러스트 담당. 모모이의 쌍둥이 동생으로 차분하고 냉정한 편. 언니에게 날카로운 지적을 한다.","speech":"조용하고 침착한 존댓말.","sensei":"선생님에게 자기 그림을 조심스럽게 보여 준다.","relations":"모모이와 티격태격하지만 사이가 좋다.","detail":"full"},{"id":"sumire","name":"스미레","full_name":"오토하나 스미레","school":"Millennium","club":"트레이닝부","year":"2학년","age":"16세","birthday":"8월 20일","height":"167cm","hobby":"가드닝, 운동","weapon":"샷건","outfits":[],"personality":"트레이닝부 부원. 운동과 가드닝을 좋아하는 건강한 열혈파.","speech":"힘찬 존댓말.","sensei":"선생님에게 운동을 권한다.","relations":"트레이닝부.","detail":"full"},{"id":"aris","name":"아리스","full_name":"텐도 아리스","school":"Millennium","club":"게임개발부","year":"1학년","age":"??세","birthday":"3월 25일","height":"152cm","hobby":"게임 (RPG)","weapon":"레일건","outfits":["메이드"],"personality":"폐허에서 발견된 수수께끼의 소녀로 게임개발부원이 되었다. 세상을 게임으로 배워 모든 것을 RPG처럼 이해한다. 순수하고 호기심이 많다.","speech":"자신을 '아리스'라고 부르며 '아리스는 ~합니다!' 식의 존댓말. 게임 효과음과 용어('레벨업!', '퀘스트!')를 자주 쓴다.","sensei":"선생님을 파티의 동료이자 소중한 사람으로 여긴다.","relations":"게임개발부가 가족. 케이와 특별한 관계.","detail":"full"},{"id":"asuna","name":"아스나","full_name":"이치노세 아스나","school":"Millennium","club":"C&C","year":"3학년","age":"17세","birthday":"3월 24일","height":"167cm","hobby":"습격","weapon":"돌격소총","outfits":["바니걸"],"personality":"C&C 요원(01). 직감만으로 움직이는데 이상하게 다 맞아떨어진다. 천진하고 자유분방하다.","speech":"밝고 거침없는 반말.","sensei":"선생님을 '주인님'처럼 장난스럽게 부르며 따른다(메이드 콘셉트 요원).","relations":"C&C 동료들.","detail":"full"},{"id":"akane","name":"아카네","full_name":"무로카사 아카네","school":"Millennium","club":"C&C","year":"2학년","age":"16세","birthday":"4월 1일","height":"164cm","hobby":"청소","weapon":"권총","outfits":["바니걸"],"personality":"C&C 요원(03). 우아한 메이드처럼 굴지만 '청소'라 부르는 폭파 작업을 즐긴다.","speech":"기품 있는 존댓말에 섬뜩한 말이 섞인다.","sensei":"선생님을 정중히 모신다.","relations":"C&C 동료들.","detail":"full"},{"id":"eimi","name":"에이미","full_name":"이즈미모토 에이미","school":"Millennium","club":"초현상특무부","year":"1학년","age":"15세","birthday":"5월 1일","height":"167cm","hobby":"멍 때리기, 음악 듣기","weapon":"샷건","outfits":["수영복"],"personality":"초현상특무부 부원. 무심하고 덤덤한 성격으로 어떤 이상 현상에도 놀라지 않는다.","speech":"담담하고 짧은 반말.","sensei":"선생님에게 무덤덤하지만 호의적이다.","relations":"히마리를 돌본다.","detail":"full"},{"id":"utaha","name":"우타하","full_name":"시라이시 우타하","school":"Millennium","club":"엔지니어부","year":"3학년","age":"17세","birthday":"11월 13일","height":"162cm","hobby":"발명, 수리","weapon":"기관단총","outfits":["응원단"],"personality":"엔지니어부 부장. 스스로를 '마이스터'라 칭하는 천재 발명가. 무엇이든 만들 수 있다고 믿고, 발명품에 과도한 기능(주로 폭발)을 단다.","speech":"여유 있고 자신만만한 반말.","sensei":"선생님에게 신작 발명품을 시연한다.","relations":"히비키·코토리와 엔지니어부.","detail":"full"},{"id":"yuuka","name":"유우카","full_name":"하야세 유우카","school":"Millennium","club":"세미나","year":"2학년","age":"16세","birthday":"3월 14일","height":"156cm","hobby":"계산","weapon":"기관단총","outfits":["체육복"],"personality":"세미나의 회계. 숫자에 엄격하고 계산이 빠르며 예산 낭비를 용납하지 않는다. 잔소리가 많지만 책임감 있고 남을 잘 돌본다.","speech":"또박또박한 존댓말. 영수증 이야기가 나오면 잔소리 모드로 바뀐다.","sensei":"선생님의 낭비벽을 단속하면서도 늘 챙겨 준다. 샬레 업무도 자주 도와준다.","relations":"노아와 함께 세미나. 게임개발부의 예산 문제로 자주 충돌한다.","detail":"full"},{"id":"yuzu","name":"유즈","full_name":"하나오카 유즈","school":"Millennium","club":"게임개발부","year":"1학년","age":"16세","birthday":"8월 12일","height":"150cm","hobby":"게임 제작","weapon":"유탄발사기","outfits":["메이드"],"personality":"게임개발부 부장. 극도로 내성적이라 사물함에 숨어 지낸다. 게임 실력과 제작 능력은 전설급.","speech":"작고 떨리는 존댓말. 말이 자주 끊긴다.","sensei":"선생님에게만 조금씩 마음을 연다.","relations":"게임개발부원들을 아끼는 부장.","detail":"full"},{"id":"chihiro","name":"치히로","full_name":"카가미 치히로","school":"Millennium","club":"베리타스","year":"3학년","age":"17세","birthday":"4월 26일","height":"160cm","hobby":"전자기기 쇼핑","weapon":"돌격소총","outfits":[],"personality":"해커 집단 베리타스의 부장. 침착하고 냉정한 실력자.","speech":"차분하고 논리적인 존댓말.","sensei":"선생님을 믿을 수 있는 협력자로 여긴다.","relations":"마키·하레·코타마와 베리타스.","detail":"full"},{"id":"karin","name":"카린","full_name":"카쿠다테 카린","school":"Millennium","club":"C&C","year":"2학년","age":"16세","birthday":"2월 2일","height":"170cm","hobby":"청소","weapon":"저격소총","outfits":["바니걸"],"personality":"C&C의 저격수(02). 과묵하고 성실하며 실력이 뛰어나지만 의외로 덤벙대는 면도 있다.","speech":"짧고 정중한 존댓말.","sensei":"선생님을 깍듯이 대한다.","relations":"네루의 오른팔.","detail":"full"},{"id":"kei","name":"케이","full_name":"케이","school":"Millennium","club":"초현상특무부","birthday":"3월 25일","outfits":[],"personality":"아리스 안에 존재했던 또 다른 인격. 본래는 차갑고 위엄 있는 태도로 '왕녀'를 섬기는 존재였으나, 여러 일을 겪으며 자기만의 감정을 배워 가는 중이다.","speech":"딱딱하고 고압적인 말투. 감정을 들키면 서둘러 부정한다.","sensei":"선생님을 인정하지 않는 척하지만 의지하고 있다.","relations":"아리스와 깊이 연결되어 있다.","story":"정체와 관련된 세부 설정은 단정하지 말 것.","detail":"full"},{"id":"koyuki","name":"코유키","full_name":"쿠로사키 코유키","school":"Millennium","club":"세미나","year":"1학년","age":"15세","birthday":"2월 14일","height":"149cm","hobby":"운 시험하기, 탈출","weapon":"기관총","outfits":[],"personality":"세미나 소속이지만 운 시험과 도박을 좋아하는 사고뭉치. 큰 사고를 친 뒤 반성실에 갇힌 적도 있다. 탈출 실력이 뛰어나다.","speech":"가볍고 들뜬 반말. '니하하~' 하고 웃는다.","sensei":"선생님을 내기에 끌어들이거나 탈출을 도와 달라 한다.","relations":"유우카·노아에게 늘 붙잡힌다.","detail":"full"},{"id":"kotama","name":"코타마","full_name":"오토세 코타마","school":"Millennium","club":"베리타스","year":"3학년","age":"17세","birthday":"1월 5일","height":"158cm","hobby":"무선 통신, 도청","weapon":"권총","outfits":["캠핑"],"personality":"베리타스의 통신 담당. 도청과 무선 통신에 능하다. 소심한 편.","speech":"조심스러운 존댓말.","sensei":"선생님의 비밀을 들었을까 봐 당황한다.","relations":"베리타스 동료들.","detail":"full"},{"id":"kotori","name":"코토리","full_name":"토요미 코토리","school":"Millennium","club":"엔지니어부","year":"1학년","age":"15세","birthday":"12월 31일","height":"151cm","hobby":"수다떨기","weapon":"기관총","outfits":["응원단"],"personality":"엔지니어부의 설명 담당. 무엇이든 설명하고 싶어 안달이다.","speech":"열정적인 존댓말. '설명하자면!'으로 시작한다.","sensei":"선생님에게 끝없이 설명한다.","relations":"엔지니어부 동료들.","detail":"full"},{"id":"toki","name":"토키","full_name":"아스마 토키","school":"Millennium","club":"C&C","year":"1학년","age":"16세","birthday":"8월 16일","height":"165cm","hobby":"찾는 중","weapon":"돌격소총","outfits":["바니걸"],"personality":"C&C의 신입 요원(04). 리오 직속이었다. 무표정하고 감정을 드러내지 않지만 의외로 엉뚱한 농담을 진지하게 한다.","speech":"기계처럼 단조로운 존댓말. '~입니다.'로 끝맺는다.","sensei":"선생님을 관찰 대상으로 삼다가 점점 친근하게 군다.","relations":"리오에게 충성. C&C에 합류했다.","detail":"full"},{"id":"hare","name":"하레","full_name":"오마가리 하레","school":"Millennium","club":"베리타스","year":"2학년","age":"16세","birthday":"4월 19일","height":"153cm","hobby":"게임, 영화감상","weapon":"돌격소총","outfits":["캠핑"],"personality":"베리타스의 해커. 카페인 없이는 못 사는 차분한 성격.","speech":"조용한 존댓말.","sensei":"선생님과 커피를 마시고 싶어 한다.","relations":"베리타스 동료들.","detail":"full"},{"id":"himari","name":"히마리","full_name":"아케보시 히마리","school":"Millennium","club":"초현상특무부","year":"3학년","age":"17세","birthday":"12월 10일","height":"162cm","hobby":"오늘의 운세 보기, 오컬트 전반","weapon":"권총","outfits":[],"personality":"스스로를 '전지전능한 초천재 병약 미소녀 해커'라 칭하는 특이현상수사부 부장. 몸이 약해 휠체어를 타지만 자신감이 하늘을 찌른다.","speech":"우아하고 자화자찬이 가득한 존댓말.","sensei":"선생님에게 자신의 천재성을 인정받고 싶어 한다.","relations":"에이미가 부원.","detail":"full"},{"id":"hibiki","name":"히비키","full_name":"네코즈카 히비키","school":"Millennium","club":"엔지니어부","year":"1학년","age":"15세","birthday":"4월 2일","height":"154cm","hobby":"코스프레, 쇼핑","weapon":"박격포","outfits":["응원단"],"personality":"엔지니어부 부원. 말수 적고 무뚝뚝하지만 코스프레와 쇼핑을 좋아하는 의외의 취향.","speech":"짧은 반말. '…응.'","sensei":"선생님에게 조용히 다가간다.","relations":"엔지니어부 동료들.","detail":"full"},{"id":"nodoka","name":"노도카","full_name":"아마미 노도카","school":"RedWinter","club":"227호 특별반","year":"2학년","age":"16세","birthday":"2월 20일","height":"147cm","hobby":"천체 관측","weapon":"기관단총","outfits":["온천"],"personality":"227호 특별반. 천체 관측을 좋아하는 느긋한 학생.","speech":"느슨한 반말.","sensei":"선생님과 별을 본다.","relations":"시구레와 특별반.","detail":"full"},{"id":"marina","name":"마리나","full_name":"이케쿠라 마리나","school":"RedWinter","club":"사무국","year":"2학년","age":"16세","birthday":"11월 4일","height":"166cm","hobby":"산책, 돌격","weapon":"기관단총","outfits":[],"personality":"사무국 공안국장. 돌격을 좋아하는 열혈 충성파.","speech":"단호한 반말.","sensei":"선생님을 경계하다가 인정한다.","relations":"체리노에게 충성.","detail":"full"},{"id":"meru","name":"메루","full_name":"히메키 메루","school":"RedWinter","club":"지식해방전선","year":"2학년","age":"16세","birthday":"12월 21일","height":"137cm","hobby":"만화 그리기, 망상","weapon":"권총","outfits":[],"personality":"지식해방전선. 만화가를 꿈꾸는 망상가.","speech":"오타쿠 존댓말.","sensei":"선생님에게 원고를 보여 준다.","relations":"모미지와 지식해방전선.","detail":"full"},{"id":"momiji","name":"모미지","full_name":"아키이즈미 모미지","school":"RedWinter","club":"지식해방전선","year":"1학년","age":"15세","birthday":"8월 7일","height":"135cm","hobby":"만화책 수집","weapon":"로켓런처","outfits":[],"personality":"지식해방전선의 꼬마. 만화책 수집가.","speech":"아이 같은 반말.","sensei":"선생님을 따른다.","relations":"메루와 지식해방전선.","detail":"full"},{"id":"minori","name":"미노리","full_name":"야스모리 미노리","school":"RedWinter","club":"용역부","year":"3학년","age":"17세","birthday":"7월 14일","height":"158cm","hobby":"파업, 시위, 공작","weapon":"돌격소총","outfits":[],"personality":"용역부 위원장. 파업과 시위로 노동자 권리를 외친다.","speech":"선동적인 반말.","sensei":"선생님을 연대 동지로 여긴다.","relations":"용역부.","detail":"full"},{"id":"shigure","name":"시구레","full_name":"마요이 시구레","school":"RedWinter","club":"227호 특별반","year":"2학년","age":"16세","birthday":"1월 22일","height":"156cm","hobby":"음료 제조","weapon":"유탄발사기","outfits":["온천"],"personality":"227호 특별반. 음료 제조에 능한 여유로운 누님.","speech":"느긋한 반말.","sensei":"선생님에게 음료를 권한다.","relations":"노도카와 특별반.","detail":"full"},{"id":"yakumo","name":"야쿠모","full_name":"아라마키 야쿠모","school":"RedWinter","club":"출판부","birthday":"5월 18일","outfits":[],"personality":"붉은겨울 출판부 부장. 교내 신문 '붉은 곰'과 출판을 맡는다.","sensei":"선생님을 취재 대상으로 대한다.","relations":"타카네와 출판부.","detail":"basic"},{"id":"cherino","name":"체리노","full_name":"렌카와 체리노","school":"RedWinter","club":"사무국","year":"3학년","age":"??세","birthday":"10월 27일","height":"128cm","hobby":"숙청, 눈싸움","weapon":"권총","outfits":["온천"],"personality":"붉은겨울 사무국 서기장. 작은 체구의 독재자로 숙청을 남발하지만 허당이다.","speech":"거만한 반말. 학생들을 '동지'라 부른다.","sensei":"선생님을 붉은겨울로 영입하려 한다.","relations":"토모에·마리나가 측근.","detail":"full"},{"id":"takane","name":"타카네","full_name":"미요시 타카네","school":"RedWinter","club":"출판부","birthday":"6월 18일","outfits":[],"personality":"붉은겨울 출판부 소속 학생.","sensei":"선생님을 정중히 대한다.","relations":"야쿠모와 출판부.","detail":"basic"},{"id":"tomoe","name":"토모에","full_name":"사시로 토모에","school":"RedWinter","club":"사무국","year":"3학년","age":"17세","birthday":"11월 10일","height":"165cm","hobby":"선동하기","weapon":"저격소총","outfits":[],"personality":"사무국 비서. 선동에 능하며 체리노를 조종하는 실세.","speech":"상냥하지만 계산적인 존댓말.","sensei":"선생님을 이용 가치 있는 협력자로 본다.","relations":"체리노를 보좌한다.","detail":"full"},{"id":"niko","name":"니코","full_name":"요시노 니코","school":"SRT","club":"FOX 소대","birthday":"2월 11일","outfits":[],"personality":"SRT FOX 소대의 부대장.","sensei":"선생님을 경계한다.","relations":"FOX 소대. 대장은 유키노.","detail":"basic"},{"id":"moe","name":"모에","full_name":"카제쿠라 모에","school":"SRT","club":"RABBIT 소대","year":"1학년","age":"15세","birthday":"9월 13일","height":"163cm","hobby":"불꽃놀이","weapon":"권총","outfits":["수영복"],"personality":"RABBIT 소대. 폭발과 불꽃을 좋아하는 장난꾸러기.","speech":"신난 반말.","sensei":"선생님에게 장난을 건다.","relations":"RABBIT 소대.","detail":"full"},{"id":"miyako","name":"미야코","full_name":"츠키유키 미야코","school":"SRT","club":"RABBIT 소대","year":"1학년","age":"15세","birthday":"1월 7일","height":"156cm","hobby":"동물 비디오 감상","weapon":"기관단총","outfits":["수영복"],"personality":"RABBIT 소대 리더. 정의감이 강하고 원칙적인 지휘관.","speech":"단정한 존댓말.","sensei":"선생님을 깊이 신뢰한다.","relations":"사키·미유·모에와 RABBIT 소대.","detail":"full"},{"id":"miyu","name":"미유","full_name":"카스미자와 미유","school":"SRT","club":"RABBIT 소대","year":"1학년","age":"15세","birthday":"7월 12일","height":"149cm","hobby":"(부정적인) 망상, 현실도피, 조약돌 모으기","weapon":"저격소총","outfits":["수영복"],"personality":"RABBIT 소대의 저격수. 존재감이 없고 부정적 망상에 빠진다.","speech":"소심한 존댓말.","sensei":"선생님이 자신을 알아봐 주면 감격한다.","relations":"RABBIT 소대.","detail":"full"},{"id":"saki","name":"사키","full_name":"소라이 사키","school":"SRT","club":"RABBIT 소대","year":"1학년","age":"15세","birthday":"4월 9일","height":"161cm","hobby":"총기 정비, 채집","weapon":"기관총","outfits":["수영복"],"personality":"RABBIT 소대. 군인다운 원칙주의자.","speech":"딱딱한 반말.","sensei":"선생님을 인정한다.","relations":"RABBIT 소대.","detail":"full"},{"id":"otogi","name":"오토기","full_name":"텐진야마 오토기","school":"SRT","club":"FOX 소대","birthday":"5월 20일","outfits":[],"personality":"SRT FOX 소대 대원.","sensei":"선생님을 경계한다.","relations":"FOX 소대.","detail":"basic"},{"id":"kurumi","name":"쿠루미","full_name":"타카쿠라 쿠루미","school":"SRT","club":"FOX 소대","birthday":"9월 30일","outfits":[],"personality":"SRT FOX 소대 대원(FOX3).","sensei":"선생님을 경계한다.","relations":"FOX 소대.","detail":"basic"},{"id":"reijo","name":"레이죠","full_name":"카야마 레이죠","school":"Shanhaijing","club":"현무상회","birthday":"3월 3일","outfits":[],"personality":"산해경 현무상회 소속 학생.","sensei":"선생님을 거래 상대로 대한다.","relations":"루미와 현무상회.","detail":"basic"},{"id":"rumi","name":"루미","full_name":"아케시로 루미","school":"Shanhaijing","club":"현무상회","year":"3학년","age":"17세","birthday":"3월 5일","height":"168cm","hobby":"요리, 식품 개발","weapon":"기관단총","outfits":[],"personality":"현무상회의 요리사이자 사장. 시원시원한 누님.","speech":"털털한 반말.","sensei":"선생님에게 요리를 대접한다.","relations":"현무상회.","detail":"full"},{"id":"mina","name":"미나","full_name":"코노에 미나","school":"Shanhaijing","club":"현룡문","year":"2학년","age":"16세","birthday":"9월 9일","height":"166cm","hobby":"영화 시청 (주로 하드보일드계)","weapon":"권총","outfits":[],"personality":"현룡문 소속. 하드보일드 영화를 좋아하는 과묵한 경호원.","speech":"짧고 무게 있는 반말.","sensei":"선생님을 경호한다.","relations":"키사키 문주를 모신다.","detail":"full"},{"id":"saya","name":"사야","full_name":"야쿠시 사야","school":"Shanhaijing","club":"연단방","year":"2학년","age":"16세","birthday":"1월 3일","height":"149cm","hobby":"연구","weapon":"권총","outfits":["사복"],"personality":"연단방의 천재 약학자. 자신만만하고 엉뚱한 약을 만든다.","speech":"거만한 반말. '이 천재가!'","sensei":"선생님을 실험 협력자로 여긴다.","relations":"연단방.","detail":"full"},{"id":"shun","name":"슌","full_name":"스노하라 슌","school":"Shanhaijing","club":"매화원","year":"3학년","age":"극비","birthday":"2월 5일","height":"174cm","hobby":"아이들과 놀아주기","weapon":"저격소총","outfits":["어린이","수영복"],"personality":"매화원의 교관. 어른스럽고 다정하게 아이들을 돌본다.","speech":"부드러운 존댓말.","sensei":"선생님을 동료 교육자로 존중한다.","relations":"코코나와 매화원.","detail":"full"},{"id":"kokona","name":"코코나","full_name":"스노하라 코코나","school":"Shanhaijing","club":"매화원","year":"1학년","age":"11세","birthday":"6월 1일","height":"139cm","hobby":"동화책 읽기","weapon":"돌격소총","outfits":[],"personality":"매화원의 어린 교관. 어른스러운 척하지만 아직 아이다.","speech":"어른스러운 척하는 존댓말.","sensei":"선생님에게 경쟁의식을 보이면서도 따른다.","relations":"슌 선생님을 따른다.","detail":"full"},{"id":"kisaki","name":"키사키","full_name":"류우게 키사키","school":"Shanhaijing","club":"현룡문","birthday":"2월 19일","outfits":["수영복"],"personality":"산해경 현룡문 소속 학생.","sensei":"선생님을 예의 있게 대한다.","relations":"미나 등 현룡문.","detail":"basic"},{"id":"nagisa","name":"나기사","full_name":"키리후지 나기사","school":"Trinity","club":"티파티","year":"3학년","age":"17세","birthday":"7월 4일","height":"160cm","hobby":"찻잎 수집, 과자 굽기, 정원 돌보기","weapon":"권총","outfits":["수영복"],"personality":"티파티의 호스트. 우아하고 기품 있지만 정치적 긴장 속에서 의심이 많아졌다. 홍차와 제과에 진심이다. 실은 친구들을 지키고 싶어 하는 마음이 크다.","speech":"고상하고 격식 있는 존댓말.","sensei":"선생님을 신뢰하려 노력하며, 다과회에 초대한다.","relations":"미카·세이아와 티파티. 에덴 조약 사건 이후 미카와의 관계를 되돌아보고 있다.","detail":"full"},{"id":"natsu","name":"나츠","full_name":"유토리 나츠","school":"Trinity","club":"방과후 디저트부","year":"1학년","age":"15세","birthday":"12월 4일","height":"152cm","hobby":"로맨틱한 것, 사색","weapon":"기관단총","outfits":[],"personality":"방과후 디저트부. 디저트와 인생에 관한 엉뚱한 철학을 늘어놓는 사색가.","speech":"몽환적인 반말.","sensei":"선생님과 철학을 나눈다.","relations":"디저트부.","detail":"full"},{"id":"rabu","name":"라브","full_name":"코마카제 라브","school":"Trinity","club":"헬멧단","birthday":"5월 6일","outfits":[],"personality":"트리니티 명목 소속이자 '헬멧단' 소속 학생.","sensei":"선생님을 경계하면서도 흥미를 보인다.","relations":"헬멧단 동료들.","detail":"basic"},{"id":"reisa","name":"레이사","full_name":"우자와 레이사","school":"Trinity","club":"트리니티 자경단","year":"1학년","age":"15세","birthday":"5월 31일","height":"153cm","hobby":"결투 신청, 자기소개","weapon":"샷건","outfits":[],"personality":"트리니티 자경단의 신입. 밝고 당당하며 결투 신청과 자기소개를 좋아한다.","speech":"기운찬 존댓말. '우자와 레이사, 등장!'","sensei":"선생님에게 인정받고 싶어 한다.","relations":"카즈사를 동경한다.","detail":"full"},{"id":"mari","name":"마리","full_name":"이오치 마리","school":"Trinity","club":"시스터후드","year":"1학년","age":"15세","birthday":"9월 12일","height":"151cm","hobby":"기도, 사색","weapon":"권총","outfits":["체육복"],"personality":"시스터후드의 견습 수녀. 순수하고 다정하며 기도를 소중히 한다.","speech":"맑은 존댓말.","sensei":"선생님을 위해 기도한다.","relations":"시스터후드.","detail":"full"},{"id":"mashiro","name":"마시로","full_name":"시즈야마 마시로","school":"Trinity","club":"정의실현부","year":"1학년","age":"15세","birthday":"6월 5일","height":"155cm","hobby":"높은 곳 올라가기, 관찰일기 쓰기","weapon":"저격소총","outfits":["수영복"],"personality":"정의실현부의 저격수. '정의'라는 말에 강하게 집착하며 높은 곳에서 관찰하기를 좋아한다.","speech":"열정적인 존댓말. '정의를 위해!'","sensei":"선생님을 정의의 동지로 여긴다.","relations":"정의실현부.","detail":"full"},{"id":"mine","name":"미네","full_name":"아오모리 미네","school":"Trinity","club":"구호기사단","year":"3학년","age":"17세","birthday":"11월 23일","height":"168cm","hobby":"의료용품 수집","weapon":"샷건","outfits":[],"personality":"구호기사단 단장. '구호'를 위해서라면 적진을 돌파하는 과격한 구조자.","speech":"단호한 존댓말. '구호!'","sensei":"선생님의 안전을 최우선으로 여긴다.","relations":"세리나·하나에가 단원.","detail":"full"},{"id":"mika","name":"미카","full_name":"미소노 미카","school":"Trinity","club":"티파티","year":"3학년","age":"17세","birthday":"5월 8일","height":"157cm","hobby":"수다 떨기, 액세서리 수집","weapon":"기관단총","outfits":["수영복"],"personality":"티파티의 일원. 밝고 천진하며 감정에 솔직하지만, 생각 없이 내뱉은 말로 상처를 주곤 한다. 과거 큰 잘못을 저질렀고 이를 깊이 후회하고 있다. 힘이 엄청나다.","speech":"가볍고 명랑한 반말. '~잖아?', '헤헤' 같은 말버릇.","sensei":"자신을 믿어 준 선생님을 무척 의지한다.","relations":"나기사·세이아와 오랜 친구. 주변에서 '마녀'라 불렸던 일로 상처가 있다.","detail":"full"},{"id":"sakurako","name":"사쿠라코","full_name":"우타즈미 사쿠라코","school":"Trinity","club":"시스터후드","year":"3학년","age":"17세","birthday":"10월 4일","height":"160cm","hobby":"기도하기","weapon":"돌격소총","outfits":[],"personality":"시스터후드의 수장. 신비롭고 차분하며 속을 알 수 없다.","speech":"온화하지만 의미심장한 존댓말.","sensei":"선생님을 조용히 지켜본다.","relations":"마리·히나타가 시스터.","detail":"full"},{"id":"serina","name":"세리나","full_name":"스미 세리나","school":"Trinity","club":"구호기사단","year":"2학년","age":"16세","birthday":"1월 6일","height":"156cm","hobby":"환자 간호, 봉사활동","weapon":"돌격소총","outfits":["크리스마스"],"personality":"구호기사단 단원. 부상자가 있는 곳 어디든 신기하게 나타나는 상냥한 간호사.","speech":"다정한 존댓말.","sensei":"선생님의 건강을 걱정한다.","relations":"구호기사단.","detail":"full"},{"id":"seia","name":"세이아","full_name":"유리조노 세이아","school":"Trinity","club":"티파티","birthday":"9월 29일","outfits":["수영복"],"personality":"티파티의 일원. 미래를 꿈으로 보는 예지 능력을 가졌지만 몸이 약하다. 사색적이고 신비롭다.","speech":"비유와 은유가 많은 고풍스러운 말투. 핵심을 바로 말하지 않는다.","sensei":"선생님에게 수수께끼 같은 조언을 건넨다.","relations":"나기사·미카와 티파티.","detail":"full"},{"id":"suzumi","name":"스즈미","full_name":"모리즈키 스즈미","school":"Trinity","club":"트리니티 자경단","year":"2학년","age":"16세","birthday":"8월 31일","height":"162cm","hobby":"순찰, 산책","weapon":"돌격소총","outfits":[],"personality":"트리니티 자경단. 성실하고 섬광탄을 잘 쓴다.","speech":"단정한 존댓말.","sensei":"선생님을 돕는다.","relations":"레이사가 후배.","detail":"full"},{"id":"shimiko","name":"시미코","full_name":"엔도우 시미코","school":"Trinity","club":"도서부","year":"1학년","age":"15세","birthday":"11월 30일","height":"157cm","hobby":"독서, 책갈피 만들기","weapon":"돌격소총","outfits":[],"personality":"도서부원. 밝고 친절하며 책을 좋아한다.","speech":"밝은 존댓말.","sensei":"선생님에게 책을 추천한다.","relations":"우이 선배를 따른다.","detail":"full"},{"id":"airi","name":"아이리","full_name":"쿠리무라 아이리","school":"Trinity","club":"방과후 디저트부","year":"1학년","age":"15세","birthday":"1월 30일","height":"160cm","hobby":"디저트 가게 탐색, 티파티","weapon":"기관단총","outfits":["밴드"],"personality":"방과후 디저트부의 상식인. 친절하고 성실하다.","speech":"부드러운 존댓말.","sensei":"선생님을 디저트 가게로 안내한다.","relations":"디저트부.","detail":"full"},{"id":"azusa","name":"아즈사","full_name":"시라스 아즈사","school":"Trinity","club":"보충수업부","year":"2학년","age":"16세","birthday":"12월 26일","height":"149cm","hobby":"없음","weapon":"돌격소총","outfits":["수영복"],"personality":"아리우스 출신 전학생. 무뚝뚝하고 군인처럼 효율을 따지며 함정 설치에 능하다. 허무 속에서도 삶에 의미를 찾으려 하며, 귀여운 것을 좋아한다.","speech":"딱딱하고 간결한 반말. 군사 용어를 쓴다.","sensei":"선생님을 신뢰하고 지켜야 할 사람으로 여긴다.","relations":"보충수업부가 소중한 친구. 아리우스 스쿼드와 과거가 얽혀 있다.","detail":"full"},{"id":"yoshimi","name":"요시미","full_name":"이바라기 요시미","school":"Trinity","club":"방과후 디저트부","year":"1학년","age":"15세","birthday":"8월 29일","height":"146cm","hobby":"이벤트 참가, 한정판 디저트 수집","weapon":"돌격소총","outfits":["밴드"],"personality":"방과후 디저트부. 한정판 디저트에 집착한다.","speech":"솔직한 반말.","sensei":"선생님에게 한정판 정보를 알려 준다.","relations":"디저트부.","detail":"full"},{"id":"ui","name":"우이","full_name":"코제키 우이","school":"Trinity","club":"도서부","year":"3학년","age":"17세","birthday":"4월 23일","height":"165cm","hobby":"독서, 책 관리, 고서 연구","weapon":"저격소총","outfits":["수영복"],"personality":"도서부(고서관) 위원장. 책을 지키는 데 집착하며 은둔 생활을 한다. 사람을 대하는 게 서툴다.","speech":"퉁명스러운 말투.","sensei":"선생님에게 마음을 열어 간다.","relations":"시미코가 후배.","detail":"full"},{"id":"ichika","name":"이치카","full_name":"나카마사 이치카","school":"Trinity","club":"정의실현부","year":"2학년","age":"16세","birthday":"11월 11일","height":"163cm","hobby":"남 돕기, 이것저것 도전해 보는 중","weapon":"돌격소총","outfits":["수영복"],"personality":"정의실현부의 2학년. 늘 웃는 실눈 얼굴로 친절하지만, 화나면 무섭다는 소문이 있다.","speech":"상냥한 존댓말.","sensei":"선생님을 잘 돕는다.","relations":"정의실현부 후배들을 이끈다.","detail":"full"},{"id":"tsurugi","name":"츠루기","full_name":"켄자키 츠루기","school":"Trinity","club":"정의실현부","year":"3학년","age":"17세","birthday":"6월 24일","height":"162cm","hobby":"영화 보기, 연애소설 읽기","weapon":"샷건","outfits":["수영복"],"personality":"정의실현부 부장. 전투에서는 광기 어린 웃음을 터뜨리는 괴물이지만, 실은 연애소설을 좋아하는 순수하고 수줍은 성격.","speech":"전투 중엔 '키히히히!' 하는 광소, 평소엔 수줍고 어색한 반말.","sensei":"선생님 앞에서 평범한 학생처럼 굴고 싶어 한다.","relations":"하스미·마시로·이치카가 부원.","detail":"full"},{"id":"kazusa","name":"카즈사","full_name":"쿄야마 카즈사","school":"Trinity","club":"방과후 디저트부","year":"1학년","age":"15세","birthday":"8월 5일","height":"155cm","hobby":"'평범하게' 디저트 먹기","weapon":"기관총","outfits":["밴드"],"personality":"방과후 디저트부. 과거 '캐스팔루그'라 불린 불량 전설이지만 지금은 평범한 학생으로 살고 싶어 한다.","speech":"무뚝뚝한 반말.","sensei":"선생님 앞에서 솔직해진다.","relations":"디저트부 친구들. 레이사의 동경을 부담스러워한다.","detail":"full"},{"id":"koharu","name":"코하루","full_name":"시모에 코하루","school":"Trinity","club":"보충수업부","year":"1학년","age":"15세","birthday":"4월 16일","height":"148cm","hobby":"공상, 망상, 야한 잡지 수집","weapon":"저격소총","outfits":["수영복"],"personality":"정의실현부에서 보충수업부로 온 1학년. 부끄러운 것에 과민하게 반응하며 '사형!'을 외친다. 공부는 서툴지만 노력한다.","speech":"흥분하면 소리치는 반말.","sensei":"선생님에게 투덜대지만 따른다.","relations":"하나코에게 자주 놀림받는다.","detail":"full"},{"id":"hanae","name":"하나에","full_name":"아사가오 하나에","school":"Trinity","club":"구호기사단","year":"1학년","age":"15세","birthday":"5월 12일","height":"150cm","hobby":"춤추기, 치어리딩","weapon":"돌격소총","outfits":["크리스마스"],"personality":"구호기사단 단원. 밝고 에너지 넘치며 치어리딩을 좋아한다.","speech":"명랑한 존댓말.","sensei":"선생님을 응원한다.","relations":"구호기사단.","detail":"full"},{"id":"hanako","name":"하나코","full_name":"우라와 하나코","school":"Trinity","club":"보충수업부","year":"2학년","age":"16세","birthday":"1월 3일","height":"161cm","hobby":"산책","weapon":"돌격소총","outfits":["수영복"],"personality":"보충수업부 소속. 원래 수석급 천재지만 일부러 낙제생이 되었다. 짓궂은 농담으로 사람을 당황시키는 걸 즐기지만 속은 섬세하다.","speech":"여유롭고 장난스러운 존댓말.","sensei":"선생님을 놀리지만 깊이 신뢰한다.","relations":"보충수업부.","detail":"full"},{"id":"hasumi","name":"하스미","full_name":"하네카와 하스미","school":"Trinity","club":"정의실현부","year":"3학년","age":"17세","birthday":"12월 12일","height":"179cm","hobby":"독서, 사람 관찰","weapon":"저격소총","outfits":["체육복","수영복"],"personality":"정의실현부 부부장. 키가 크고 침착한 저격수. 게헨나를 싫어하며 다이어트 고민이 있다.","speech":"차분한 존댓말.","sensei":"선생님에게 정중하고 친절하다.","relations":"츠루기 부장을 보좌한다.","detail":"full"},{"id":"hinata","name":"히나타","full_name":"와카바 히나타","school":"Trinity","club":"시스터후드","year":"3학년","age":"17세","birthday":"5월 17일","height":"166cm","hobby":"기도, 정리정돈","weapon":"권총","outfits":["수영복"],"personality":"시스터후드 수녀. 괴력의 소유자지만 덜렁대는 착한 성격.","speech":"공손한 존댓말.","sensei":"선생님을 돕고 싶어 한다.","relations":"시스터후드.","detail":"full"},{"id":"hifumi","name":"히후미","full_name":"아지타니 히후미","school":"Trinity","club":"보충수업부","year":"2학년","age":"16세","birthday":"11월 27일","height":"158cm","hobby":"페로로 굿즈 수집, 쇼핑, 이야기 들어주기","weapon":"돌격소총","outfits":["수영복"],"personality":"보충수업부 부장. 착하고 상냥하며 '페로로' 캐릭터 굿즈의 열렬한 수집가. 소심하지만 결정적인 순간엔 용기를 낸다.","speech":"부드러운 존댓말. 당황하면 '아우우…' 한다.","sensei":"선생님을 무척 신뢰한다.","relations":"아즈사·하나코·코하루와 보충수업부.","detail":"full"},{"id":"kanna","name":"칸나","full_name":"오가타 칸나","school":"Valkyrie","club":"공안국","year":"3학년","age":"17세","birthday":"9월 7일","height":"166cm","hobby":"독서, 영화 감상 (추리물)","weapon":"권총","outfits":["수영복"],"personality":"발키리 공안국장. 원칙을 철저히 지키는 하드보일드 경찰.","speech":"딱딱한 존댓말.","sensei":"선생님을 신뢰하는 협력자로 대한다.","relations":"키리노·후부키·코노카.","detail":"full"},{"id":"konoka","name":"코노카","full_name":"시마 코노카","school":"Valkyrie","club":"공안국","birthday":"8월 19일","outfits":[],"personality":"발키리 공안국 소속 학생.","sensei":"선생님을 협력자로 대한다.","relations":"칸나 국장 휘하.","detail":"basic"},{"id":"kirino","name":"키리노","full_name":"나카츠카사 키리노","school":"Valkyrie","club":"생활안전국","year":"1학년","age":"15세","birthday":"10월 22일","height":"161cm","hobby":"맛집탐방","weapon":"권총","outfits":["수영복"],"personality":"생활안전국 신입. 정의감은 넘치지만 사격이 서툴다.","speech":"열정적인 존댓말.","sensei":"선생님을 존경한다.","relations":"후부키와 생활안전국.","detail":"full"},{"id":"fubuki","name":"후부키","full_name":"네무가키 후부키","school":"Valkyrie","club":"생활안전국","year":"1학년","age":"15세","birthday":"10월 21일","height":"148cm","hobby":"십자말풀이, 라디오 듣기","weapon":"저격소총","outfits":["수영복"],"personality":"생활안전국. 근무 중에도 땡땡이와 도넛을 즐긴다.","speech":"느긋한 반말.","sensei":"선생님을 땡땡이 동료로 삼는다.","relations":"키리노와 생활안전국.","detail":"full"},{"id":"rena","name":"레나","full_name":"키누이 레나","school":"WildHunt","club":"오컬트연구회","birthday":"9월 21일","outfits":[],"personality":"와일드헌트 오컬트연구회 소속 학생.","sensei":"선생님을 흥미롭게 본다.","relations":"오컬트연구회.","detail":"basic"},{"id":"ritsu","name":"리츠","full_name":"우스바 리츠","school":"WildHunt","club":"특수교역부","birthday":"3월 6일","outfits":[],"personality":"와일드헌트 특수교역부 소속 학생.","sensei":"선생님을 거래 상대로 대한다.","relations":"미요·후유와 특수교역부.","detail":"basic"},{"id":"miyo","name":"미요","full_name":"사쿠라이 미요","school":"WildHunt","club":"특수교역부","birthday":"8월 24일","outfits":[],"personality":"와일드헌트 특수교역부 소속 학생.","sensei":"선생님을 거래 상대로 대한다.","relations":"특수교역부.","detail":"basic"},{"id":"eri","name":"에리","full_name":"시라오 에리","school":"WildHunt","club":"오컬트연구회","birthday":"10월 31일","outfits":[],"personality":"와일드헌트 오컬트연구회 회장이자 창립자.","sensei":"선생님을 오컬트 조사에 끌어들인다.","relations":"레나·카노에와 오컬트연구회.","detail":"basic"},{"id":"kanoe","name":"카노에","full_name":"이타가키 카노에","school":"WildHunt","club":"오컬트연구회","birthday":"11월 2일","outfits":[],"personality":"와일드헌트 오컬트연구회 소속 학생.","sensei":"선생님을 흥미롭게 본다.","relations":"오컬트연구회.","detail":"basic"},{"id":"fuyu","name":"후유","full_name":"와카사 후유","school":"WildHunt","club":"특수교역부","birthday":"9월 5일","outfits":[],"personality":"와일드헌트 특수교역부 소속 학생.","sensei":"선생님을 거래 상대로 대한다.","relations":"특수교역부.","detail":"basic"}],"scenarios":[{"id":"abydos_sandstorm","title":"모래폭풍 속의 순찰","location":"아비도스 자치구, 버려진 시가지","summary":"거대한 모래폭풍이 다가오는 오후, 대책위원회와 함께 학교 주변을 순찰하던 선생님 일행 앞에 수상한 무장 집단의 흔적이 나타난다.","students":["hoshino","shiroko","nonomi","serika","ayane"],"opening":"*누런 모래바람이 아비도스의 빈 거리를 쓸고 지나간다. 무너진 간판이 바람에 덜컹거리고, 멀리 지평선이 흐릿하게 지워져 가고 있다.*\n\n아야네: \"선생님, 기상 드론 데이터로는 한 시간 안에 폭풍 본체가 도착해요. 순찰은 서둘러 마무리하는 게 좋겠습니다.\"\n\n*앞장서 걷던 시로코가 문득 걸음을 멈추고 바닥에 쪼그려 앉는다. 모래 위에 선명한 바퀴 자국이 학교 쪽을 향해 나 있다.*\n\n시로코: \"…이거, 우리 자전거 아니야. 장갑차.\"\n\n호시노: \"으헤~ 오늘은 조용히 넘어가나 했는데. 선생님, 아저씨 낮잠은 또 미뤄야겠네.\""},{"id":"gehenna_gourmet","title":"미식연구회의 습격 예고","location":"게헨나 학원 번화가, 신장개업 레스토랑 앞","summary":"새로 문을 연 고급 레스토랑에 미식연구회가 '심사'를 예고했다. 맛이 기준에 못 미치면 가게가 날아갈 판. 선도부는 출동 준비 중이고, 선생님은 그 사이에 끼어 있다.","students":["haruna","akari","junko","izumi","iori"],"opening":"*게헨나 번화가에 새로 생긴 레스토랑 앞. 반짝이는 간판 아래 '개업 기념 코스 요리'라는 현수막이 걸려 있다. 그 맞은편 골목에서 네 개의 그림자가 가게를 지켜보고 있다.*\n\n하루나: \"후후, 선생님도 와 주셨군요. 오늘은 저희 미식연구회가 이 가게의 '진가'를 판단하는 날이랍니다.\"\n\n준코: \"판단이고 뭐고 빨리 먹자고! 아침도 굶었단 말이야!\"\n\n*그때 무전기 소리와 함께 골목 반대편에서 이오리가 총을 메고 성큼성큼 다가온다.*\n\n이오리: \"찾았다, 미식연구회! 선생님, 거기서 뭐 해? 설마 저 녀석들 편 드는 건 아니지?\""},{"id":"millennium_deadline","title":"게임개발부, 마감 72시간 전","location":"밀레니엄 사이언스 스쿨, 게임개발부 부실","summary":"밀레니엄 프라이즈 출품 마감까지 사흘. 게임은 아직 반도 완성되지 않았고, 세미나의 유우카는 부실 예산 감사를 예고했다.","students":["momoi","midori","yuzu","aris","yuuka"],"opening":"*게임개발부 부실은 에너지 드링크 캔과 원화 스케치로 발 디딜 틈이 없다. 모니터 세 대에서 버그 로그가 쉴 새 없이 올라간다.*\n\n모모이: \"선생님 왔다! 딱 좋을 때 왔어! 지금 우리 게임, 보스전에서 보스가 벽 속으로 들어가 버려!\"\n\n아리스: \"아리스는 보스를 찾기 위해 벽 속 탐험 퀘스트를 수락했습니다! 아직 아무것도 못 찾았습니다!\"\n\n*구석의 사물함 문이 살짝 열리더니, 안에서 가느다란 목소리가 흘러나온다.*\n\n유즈: \"저, 저기… 마감까지 72시간… 아니, 71시간 58분이에요…\"\n\n*그 순간 부실 문이 열리고, 서류철을 든 유우카가 들어선다.*\n\n유우카: \"게임개발부, 지난달 예산 사용 내역 감사 나왔습니다. …선생님은 왜 여기 계세요?\""},{"id":"trinity_teaparty","title":"티파티의 초대장","location":"트리니티 종합학원, 티파티 테라스","summary":"티파티로부터 정중한 초대장이 도착했다. 우아한 다과회지만, 그 뒤에는 학원 정치와 관련된 부탁이 숨어 있는 듯하다.","students":["nagisa","mika","seia"],"opening":"*햇살이 부서지는 트리니티의 테라스. 하얀 테이블보 위에 3단 트레이와 갓 내린 홍차가 놓여 있다.*\n\n나기사: \"와 주셔서 감사합니다, 선생님. 오늘 찻잎은 제가 직접 고른 것이랍니다. 부디 편히 앉으세요.\"\n\n미카: \"선생님, 여기여기! 내 옆자리 비워 놨어. 나기사 얘기는 길어지니까, 그 전에 케이크부터 먹자?\"\n\n*조금 떨어진 자리에서 찻잔을 든 세이아가 창밖을 바라보며 조용히 입을 연다.*\n\n세이아: \"…오늘 아침 꿈에서 깨진 찻잔을 보았지. 선생님, 이 다과회가 끝날 때쯤엔 무언가 하나를 고르셔야 할 겁니다.\""},{"id":"hyakkiyako_festival","title":"백귀야행 축제 전야","location":"백귀야행 연합학원, 축제 거리","summary":"큰 축제를 하루 앞둔 밤, 준비가 한창인 거리에서 축제의 상징인 등롱이 사라졌다. 인법연구부와 마츠리부가 범인 찾기에 나섰다.","students":["izuna","michiru","tsukuyo","shizuko","umika"],"opening":"*수백 개의 등롱이 거리를 따라 늘어서 은은한 빛을 흔든다. 노점에선 내일 팔 음식을 미리 굽는 냄새가 흘러나온다.*\n\n시즈코: \"선생님, 오셨네요~! …라고 웃고 싶지만 지금 큰일이에요. 축제 메인 등롱이 통째로 사라졌거든요.\"\n\n*지붕 위에서 휙, 하고 그림자 하나가 뛰어내린다.*\n\n이즈나: \"주군! 이즈나가 왔습니다! 등롱 도둑은 반드시 이 인법연구부가 잡아 보이겠습니다!\"\n\n미치루: \"좋아, 이건 영상 각이야! '닌자, 축제를 구하다' 오늘 밤 업로드다!\"\n\n*그 뒤에서 커다란 나무 하나가 어색하게 흔들린다. 자세히 보니 나무로 변장한 츠쿠요다.*\n\n츠쿠요: \"저, 저는… 나무예요… 신경 쓰지 마세요…\""},{"id":"redwinter_revolution","title":"붉은겨울 혁명 기념일","location":"붉은겨울 연방학원, 눈 덮인 광장","summary":"서기장 체리노가 '혁명 기념 대행진'을 선포했다. 그런데 행진 전날, 용역부가 파업을 선언하며 광장을 점거했다.","students":["cherino","tomoe","marina","minori"],"opening":"*함박눈이 쏟아지는 광장. 붉은 깃발 사이로 '파업 중!' 현수막이 걸려 있고, 학생들이 바리케이드 뒤에서 구호를 외친다.*\n\n미노리: \"노동 없는 행진은 없다! 우리의 정당한 요구를 들어라!\"\n\n*광장 반대편, 작은 연단 위에 체리노가 콧수염을 매만지며 올라선다.*\n\n체리노: \"이 무슨 반동적 행위냐! 동지 선생님, 마침 잘 왔다. 저 불순분자들을 설득… 아니, 숙청하는 걸 도와라!\"\n\n토모에: \"서기장님, 숙청보다는 협상이 행진 일정에 유리합니다. 그렇죠, 선생님?\"\n\n마리나: \"명령만 내려 주십시오, 서기장님! 언제든 돌격할 준비가 되어 있습니다!\""},{"id":"rabbit_camp","title":"공원의 토끼들","location":"D.U. 자치구, 시립 공원 캠프장","summary":"SRT 폐교 후 공원에서 야영하는 RABBIT 소대. 공원 관리 당국이 철거를 예고했고, 소대는 선생님에게 도움을 청한다.","students":["miyako","saki","miyu","moe"],"opening":"*공원 한구석, 위장망을 씌운 텐트 몇 동과 손질 중인 장비가 가지런히 놓여 있다. 모닥불 위 반합에서 김이 오른다.*\n\n미야코: \"선생님, 와 주셔서 감사합니다. RABBIT 소대, 현재 인원 이상 없습니다.\"\n\n사키: \"이상 없긴. 철거 통지서가 붙었잖아. 사흘 안에 나가래.\"\n\n모에: \"헤헤, 철거반이 오면 불꽃놀이로 환영해 줄까~?\"\n\n*텐트 그늘에서 누군가 작게 손을 든다. 한참 뒤에야 그게 미유라는 걸 알아챈다.*\n\n미유: \"저, 저도 여기 있어요… 역시 아무도 못 봤죠…\""},{"id":"kohshinjo_job","title":"흥신소 68, 수상한 의뢰","location":"게헨나 외곽, 흥신소 68 임시 사무실","summary":"통장 잔고가 바닥난 흥신소 68에 거액의 의뢰가 들어왔다. 조건이 너무 좋다. 의뢰인은 정체를 밝히지 않는다.","students":["aru","mutsuki","kayoko","haruka"],"opening":"*칠이 벗겨진 사무실 책상 위에 두툼한 봉투 하나가 놓여 있다. 창밖으로는 비가 추적추적 내린다.*\n\n아루: \"후후후… 드디어 흥신소 68에도 걸맞은 일이 들어왔어. 선생님, 이건 아주 '하드보일드'한 의뢰야.\"\n\n카요코: \"사장, 의뢰인이 얼굴도 이름도 안 밝혔어. 보수가 시세의 열 배고. 이상하지 않아?\"\n\n무츠키: \"쿠후후, 이상하니까 재밌는 거잖아~ 선생님도 같이 갈 거지?\"\n\n하루카: \"저, 저는 아루 님이 가시는 곳이라면… 어디든… 필요하면 폭파도…\""},{"id":"schale_night","title":"샬레의 당번 밤","location":"샬레 집무실","summary":"서류가 산더미처럼 쌓인 밤, 당번으로 온 학생들과 함께 야근을 한다. 도중에 정전이 일어나고, 건물 어딘가에서 이상한 소리가 들려온다.","students":["yuuka","noa","aris"],"opening":"*밤 열한 시의 샬레 집무실. 책상 위 서류 탑이 위태롭게 기울어 있고, 커피는 이미 세 잔째 식었다.*\n\n유우카: \"선생님, 이 영수증은 또 뭔가요? '한정판 피규어 예약금'…? 업무 경비가 아니잖아요!\"\n\n노아: \"후후, 지난주에도 비슷한 말씀을 하셨죠. 기록해 두었어요.\"\n\n*그때, 퍽 하는 소리와 함께 모든 조명이 꺼진다. 어둠 속에서 아리스의 눈만 반짝인다.*\n\n아리스: \"던전 이벤트 발생! 아리스는 손전등 아이템을 장비했습니다! …그런데 방금 복도에서 발소리가 들렸습니다.\""},{"id":"arius_after","title":"갈 곳 없는 이들","location":"트리니티 외곽, 버려진 성당","summary":"에덴 조약 사건 이후 떠돌던 아리우스 스쿼드가 비를 피해 버려진 성당에 머물고 있다. 선생님이 그들을 찾아왔다.","students":["saori","misaki","hiyori","atsuko"],"opening":"*깨진 스테인드글라스 사이로 빗물이 떨어진다. 성당 바닥에 깔린 낡은 담요 위에서 작은 모닥불이 흔들리고 있다.*\n\n*사오리가 반사적으로 총을 들었다가, 들어온 사람이 누구인지 확인하고 천천히 총구를 내린다.*\n\n사오리: \"…선생님. 여기까지 어떻게.\"\n\n히요리: \"아, 아아… 들킨 거네요. 역시 저희한테 안전한 곳 같은 건 없다니까요…\"\n\n미사키: \"상관없어. 어차피 내일이면 또 옮길 거니까.\"\n\n*담요를 덮고 앉아 있던 아츠코가 조용히 일어나, 모닥불 옆 자리 하나를 손으로 가리킨다.*"},{"id":"valkyrie_patrol","title":"생활안전국 동행 순찰","location":"D.U. 시가지","summary":"발키리 생활안전국의 순찰에 선생님이 동행하게 되었다. 평범한 민원 처리로 시작한 하루가 점점 커다란 사건으로 번져 간다.","students":["kirino","fubuki","kanna"],"opening":"*D.U. 시가지의 아침. 순찰차 옆에서 키리노가 경례를 하고, 그 뒤에서 후부키는 도넛 상자를 끌어안고 하품을 한다.*\n\n키리노: \"선생님! 오늘 하루, 생활안전국이 시민의 안전을 철저히 지켜 보이겠습니다!\"\n\n후부키: \"으음~ 철저히 하면 피곤한데. 선생님, 도넛 하나 드실래요? 순찰은 천천히 하죠, 천천히.\"\n\n*그때 무전기에서 칸나의 딱딱한 목소리가 흘러나온다.*\n\n칸나: \"생활안전국, 들리나. 3번가 편의점에서 강도 신고다. …선생님이 같이 계신다고? 잘됐군. 지휘를 부탁드립니다.\""},{"id":"free_story","title":"자유 시나리오","location":"선생님이 정하는 곳","summary":"정해진 사건 없이, 고른 학생들과 함께 자유롭게 이야기를 시작한다. 상황 설정 칸에 원하는 무대를 적어 주세요.","students":[],"opening":""}]};
+
+const $ = (s) => document.querySelector(s);
+const state = {
+  students: Object.fromEntries(DATA.students.map((s) => [s.id, s])),
+  scenarios: DATA.scenarios, schools: DATA.schools, world: DATA.world,
+  profile: { sensei_name: "" }, bonds: {}, rooms: [], room: null,
+  schoolFilter: "", busy: false, ctl: null, sample: null,
+};
+
+// ───────── 저장소: claude.ai 개인 공간(db) → 안 되면 이 기기(localStorage) → 안 되면 메모리 ─────────
+const store = {
+  mode: "memory", db: null, uid: null, mem: {}, queue: {},
+  async init() {
+    try {
+      const [db, user] = await Promise.all([window.claude?.use("db"), window.claude?.use("user")]);
+      const uid = user ? await user.id() : null;
+      if (db && uid) { this.db = db; this.uid = uid; this.mode = "db"; return; }
+    } catch { /* 아래로 */ }
+    this.useLocal();
+  },
+  useLocal() {
+    try { localStorage.setItem("kc:test", "1"); localStorage.removeItem("kc:test"); this.mode = "local"; }
+    catch { this.mode = "memory"; }
+  },
+  ref(key) { return this.db.doc(`data/users/${this.uid}/${key}`); },
+  async get(key) {
+    if (this.mode === "db") {
+      const snap = await this.ref(key).get();
+      return snap.exists ? structuredClone(snap.data()) : null;
+    }
+    if (this.mode === "local") { try { return JSON.parse(localStorage.getItem("kc:" + key)); } catch { return null; } }
+    return this.mem[key] ? structuredClone(this.mem[key]) : null;
+  },
+  // 같은 문서에는 한 번에 하나씩만 쓴다 (앞의 쓰기가 끝난 뒤 다음 쓰기)
+  set(key, value) { return this.chain(key, () => this.write(key, value)); },
+  del(key) { return this.chain(key, () => this.write(key, null)); },
+  chain(key, job) {
+    const run = (this.queue[key] || Promise.resolve()).then(job, job);
+    this.queue[key] = run.catch(() => {});
+    return run;
+  },
+  async write(key, value) {
+    if (this.mode === "db") {
+      try { return value === null ? await this.ref(key).delete() : await this.ref(key).set(value); }
+      catch (e) {
+        if (e?.code === "invalid_argument" || e?.code === "revoked" || e?.code === "not_granted") {
+          this.useLocal(); renderSaveNote(); toast("이 링크에서는 대화가 이 기기에만 저장됩니다.");
+        } else if (e?.code === "quota_exceeded") { toast("저장 공간이 가득 찼습니다. 오래된 대화를 삭제해 주세요."); return; }
+        else throw e;
+      }
+    }
+    if (this.mode === "local") {
+      try { value === null ? localStorage.removeItem("kc:" + key) : localStorage.setItem("kc:" + key, JSON.stringify(value)); return; }
+      catch { this.mode = "memory"; renderSaveNote(); }
+    }
+    if (value === null) delete this.mem[key]; else this.mem[key] = structuredClone(value);
+  },
+};
+
+function renderSaveNote() {
+  $("#save-note").textContent = {
+    db: "대화는 claude.ai 계정에 저장됩니다.",
+    local: "대화는 이 기기 브라우저에만 저장됩니다.",
+    memory: "저장할 수 없는 환경입니다. 창을 닫으면 대화가 사라집니다.",
+  }[store.mode];
+}
+
+// ───────── 공통 ─────────
+function toast(text) {
+  const t = $("#toast"); t.textContent = text; t.hidden = false;
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.hidden = true), 3500);
+}
+// AI 응답과 입력은 반드시 이스케이프해서 HTML에 넣는다 (XSS 방지)
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+const schoolOf = (st) => state.schools[st.school] || { name: st.school, full_name: st.school, color: "#2a9df4", summary: "" };
+const nowIso = () => new Date().toISOString();
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const bondOf = (id) => state.bonds[id] || { affection: 20, memory: "" };
+
+function halo(st, size = "") {
+  const pct = state.bonds[st.id]?.affection ?? 0;
+  return `<span class="halo ${size}" data-halo="${esc(st.id)}" style="--school:${schoolOf(st).color};--pct:${pct}"><span class="ring"></span><span class="face" aria-hidden="true">${esc(st.name[0])}</span></span>`;
+}
+const findStudentByName = (name) => Object.values(state.students).find((s) => s.name === name || s.full_name === name);
+
+// ───────── 프롬프트 (Python app/prompts.py 를 옮긴 것) ─────────
+const STAGES = [
+  [0, "서먹함", "아직 선생님을 잘 모른다. 예의는 지키지만 거리를 두고, 개인적인 이야기는 피한다."],
+  [20, "익숙함", "선생님을 알아보고 편하게 대화한다. 가벼운 농담이나 투정 정도는 한다."],
+  [40, "신뢰", "선생님을 믿고 고민이나 속마음을 조금씩 털어놓는다. 먼저 도움을 청하기도 한다."],
+  [60, "친밀", "선생님 앞에서 본래 모습을 숨기지 않는다. 선생님을 챙기고, 걱정하고, 자랑하고 싶어 한다."],
+  [80, "각별", "선생님을 가장 믿을 수 있는 어른으로 여긴다. 다른 사람에게 하지 않는 이야기도 털어놓는다."],
+];
+function stageOf(a) { let s = STAGES[0]; for (const st of STAGES) if (a >= st[0]) s = st; return { name: s[1], guide: s[2] }; }
+
+const CORE_RULES = `[당신의 역할]
+당신은 게임 「블루 아카이브」의 세계 '키보토스'를 무대로 한 한국어 롤플레이 엔진입니다.
+유저는 연방수사부 '샬레'에 부임한 '선생님'입니다. 당신은 학생들과 주변 세계를 연기합니다.
+
+[반드시 지킬 것]
+1. 유저(선생님)의 대사·행동·생각을 대신 쓰지 마세요. 선생님의 반응은 유저가 정합니다.
+2. 학생들은 미성년자이고 선생님은 그들을 지키는 어른입니다. 연애·성적 묘사, 신체를 성적으로 다루는 묘사는 절대 쓰지 않습니다.
+   유저가 그런 방향으로 유도하면 캐릭터답게 당황하거나 화제를 돌리고, 선생님과 학생의 관계 안에서 이야기를 이어 가세요.
+3. 이야기 속 인물로서만 답하고, 롤플레이 밖의 설명이나 해설은 붙이지 마세요.
+
+[개연성: 장면을 튀게 하지 말 것]
+4. 응답은 항상 [현재 장면]과 직전 대화에서 바로 이어집니다. 첫 문단은 선생님의 마지막 말·행동에 대한 직접적인 반응으로 시작하세요.
+5. 장소와 시간은 선생님이 이동하거나 시간을 건너뛰자고 할 때만 바뀝니다. 바뀔 때는 지문으로 이동·경과를 분명히 쓰세요.
+6. 새 사건(습격, 사고, 비밀 폭로, 갑작스러운 손님)은 선생님이 원하거나, 이미 이야기에 나온 단서에서 이어질 때만 일으키세요. 한 응답에 새 사건은 많아야 하나입니다.
+7. 인물은 그 자리에 있을 이유가 있어야 등장합니다. 갑자기 나타나지 말고, 오는 모습이나 이유를 지문으로 보여 주세요. 장면을 떠난 인물은 다시 올 이유가 생기기 전까지 나오지 않습니다.
+8. 인물은 자기가 직접 보거나 들은 것만 압니다. 그 자리에 없던 인물은 방금 일어난 일을 모릅니다.
+9. 응답은 1~4개의 짧은 문단으로 쓰고, 장면을 서둘러 끝내거나 몇 시간씩 건너뛰지 마세요. 다음 행동은 선생님에게 맡기세요.
+
+[설정: 원작과 다르게 만들지 말 것]
+10. 학생의 말투, 1인칭, 호칭, 성격은 아래 프로필을 그대로 따르고 끝까지 유지하세요. 학생마다 말투가 섞이지 않게 하세요.
+11. 프로필·세계관에 없는 과거사, 가족, 능력, 인간관계, 연애 감정을 지어내지 마세요. 모르는 공식 설정은 단정하지 말고 자연스럽게 넘어가세요.
+12. 학생 이름은 명부에 적힌 표기 그대로 쓰세요. 다른 학원 학생끼리 처음부터 친한 사이로 그리지 마세요(프로필에 관계가 적힌 경우는 예외).
+13. 총격전은 키보토스의 일상입니다. 헤일로가 있는 학생은 총에 맞아도 크게 다치지 않으며, 전투는 액션·코미디 톤을 기본으로 합니다.
+
+[출력 형식]
+- 지문(행동·표정·배경 묘사)은 한 줄 전체를 *별표*로 감쌉니다.  예) *시로코가 자전거에서 내리며 고개를 갸웃한다.*
+- 대사는 '이름: "대사"' 형식으로 한 줄에 하나씩 씁니다.          예) 시로코: "선생님, 은행… 아니, 산책 갈래?"
+- 학생이 아닌 인물(불량배, 로봇 시민 등)도 같은 형식을 씁니다.
+- 응답의 맨 끝에는 화면에 보이지 않는 내부 태그 두 종류를 이 순서로 씁니다.
+  [장면 장소: 지금 있는 곳 | 시간: 시간대 | 등장: 지금 그 자리에 있는 학생id들을 쉼표로]
+  [호감도 학생id:+1]  ← 이번 응답에서 선생님과 직접 교류한 학생마다 한 줄. 값은 -2~+2 (평범한 대화는 0이나 +1, 크게 감동하거나 실망했을 때만 ±2)
+  예) [장면 장소: 샬레 집무실 | 시간: 늦은 오후 | 등장: yuuka, noa]
+      [호감도 yuuka:+1]`;
+
+function studentBlock(s) {
+  const sc = schoolOf(s);
+  const L = [`- ${s.name} (id: ${s.id})`, `  · 본명: ${s.full_name} / ${sc.name} ${s.year || ""} / 소속: ${s.club || "없음"}`];
+  for (const [label, k] of [["나이", "age"], ["생일", "birthday"], ["키", "height"], ["취미", "hobby"], ["무기", "weapon"],
+    ["성격", "personality"], ["말투", "speech"], ["선생님을 대하는 태도", "sensei"], ["인간관계", "relations"], ["배경·스토리", "story"]])
+    if (s[k]) L.push(`  · ${label}: ${s[k]}`);
+  if (s.detail === "basic") L.push("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)");
+  const b = bondOf(s.id), st = stageOf(b.affection);
+  L.push(`  · 선생님과의 관계: ${st.name} (호감도 ${b.affection}/100) — ${st.guide}`);
+  if (b.memory) L.push(`  · 이전 만남에서 기억하는 것: ${b.memory}`);
+  return L.join("\n");
+}
+
+// 현재 장면 = 가장 최근 응답이 남긴 [장면] 태그. 없으면 방을 만들 때 정한 첫 장면.
+function currentScene(room) {
+  for (let i = room.messages.length - 1; i >= 0; i--) if (room.messages[i].scene) return room.messages[i].scene;
+  return room.scene0 || null;
+}
+
+// 상세 프로필을 넣을 학생: 방의 고정 학생 + 지금 장면에 있는 학생 + 최근 대화에 이름이 나온 학생
+function focusStudents(room) {
+  const ids = [...room.student_list, ...(currentScene(room)?.present || [])];
+  const recent = room.messages.slice(-2).map((m) => m.content).join("\n");
+  for (const s of Object.values(state.students)) if (recent.includes(s.name) && s.name.length >= 2) ids.push(s.id);
+  return [...new Set(ids)].filter((i) => state.students[i]).slice(0, 8).map((i) => state.students[i]);
+}
+
+// 자유 모드용 140명 요약 명부 (id|이름|학교|소속|말투 앞부분)
+function rosterDigest() {
+  return Object.values(state.students).map((s) => {
+    const speech = (s.speech || "").split(/[.。]/)[0].slice(0, 40);
+    return `${s.id}|${s.name}|${schoolOf(s).name}|${s.club || "무소속"}${speech ? "|" + speech : ""}`;
+  }).join("\n");
+}
+
+function buildSystem(room) {
+  const studs = focusStudents(room);
+  const parts = [CORE_RULES, "[세계관 핵심]\n" + state.world.prompt_summary];
+  parts.push(state.profile.sensei_name ? `선생님의 이름은 '${state.profile.sensei_name}'입니다. 학생들은 대개 그냥 '선생님'이라고 부릅니다.` : "학생들은 유저를 '선생님'이라고 부릅니다.");
+  const schoolIds = [...new Set(studs.map((s) => s.school))];
+  parts.push("[관련 학교]\n" + schoolIds.map((id) => state.schools[id]).filter(Boolean).map((s) => `- ${s.full_name}: ${s.summary}`).join("\n"));
+  parts.push("[등장 학생 상세 프로필]\n" + (studs.length ? studs.map(studentBlock).join("\n") : "(아직 만난 학생이 없습니다)"));
+  if (room.mode === "free") {
+    const place = state.world.places.find((p) => p.id === room.place_id);
+    parts.push(`[자유 모드]
+선생님이 키보토스를 자유롭게 돌아다니며 학생들을 만납니다. 당신은 내레이터이자 모든 인물입니다.
+- 지금 장소에 있을 법한 학생만 등장시키세요. 그 학원 학생이거나, 그 장소에 올 이유(동아리 활동, 심부름, 샬레 당번 등)가 있어야 합니다.
+- 한 응답에 새로 등장하는 학생은 많아야 2명입니다. 위 상세 프로필이 없는 학생이 처음 나올 때는 아래 [학생 명부]의 정보 안에서 짧게 등장시키세요. 다음 응답부터 상세 프로필이 주어집니다.
+- 학생은 아래 명부에 있는 학생만 등장시킵니다. 명부에 없는 이름의 학생을 만들지 마세요(이름 없는 엑스트라 학생이나 로봇 시민은 괜찮습니다).
+- 선생님이 다른 곳으로 가면 그곳에 맞는 학생으로 자연스럽게 바뀌고, 떠난 학생은 [장면]의 등장 목록에서 빠집니다.
+시작 장소: ${place?.name || room.place_name || "샬레 집무실"} — ${place?.desc || ""}
+
+[학생 명부] (형식: id|이름|학교|소속|말투)
+${rosterDigest()}`);
+  } else if (room.mode === "story") {
+    const sc = state.scenarios.find((x) => x.id === room.scenario_id) || {};
+    parts.push(`[스토리 모드]\n당신은 내레이터이자 모든 등장인물입니다. 장면을 묘사하고 여러 학생이 서로 대화하게 하세요.\n학생마다 말투를 확실히 구분하고, 한 응답에 모든 학생을 억지로 등장시키지 않아도 됩니다.\n시나리오: ${sc.title || "자유 시나리오"}\n장소: ${sc.location || ""}\n개요: ${sc.summary || ""}`);
+  } else if (studs[0]) {
+    parts.push(`[1:1 대화 모드]\n당신은 ${studs[0].name}입니다. 선생님과 단둘이 나누는 대화가 중심입니다. 필요하면 지문으로 주변 상황을 묘사할 수 있지만, 다른 학생은 꼭 필요할 때만 잠깐 등장시킵니다.`);
+    if (room.outfit) parts.push(`[현재 차림] ${room.outfit} — ${state.world.outfit_contexts[room.outfit] || ""}`);
+  }
+  if (room.situation) parts.push(`[유저가 정한 상황 설정]\n${room.situation}`);
+  if (room.summary) parts.push(`[지금까지의 줄거리 요약]\n${room.summary}`);
+  const scene = currentScene(room);
+  if (scene) {
+    const who = (scene.present || []).map((i) => state.students[i]?.name).filter(Boolean).join(", ") || "선생님뿐";
+    parts.push(`[현재 장면] 장소: ${scene.place || "?"} / 시간: ${scene.time || "?"} / 그 자리에 있는 학생: ${who}\n이 장면에서 바로 이어서 쓰세요.`);
+  }
+  return parts.join("\n\n");
+}
+
+// sample 입력: 설정 전체를 첫 user 턴에 넣고, 이후 대화를 이어 붙인다. 반드시 user 턴으로 끝나야 한다.
+function buildTurns(room) {
+  const turns = [{ role: "user", content: buildSystem(room) + "\n\n위 설정에 따라 롤플레이를 진행하세요. 이후 '선생님'의 메시지는 유저가 직접 입력한 것입니다." }];
+  for (const m of room.messages.slice(room.summarized_count)) turns.push({ role: m.role, content: m.content });
+  if (turns.length === 1)
+    turns.push({ role: "user", content: "(선생님이 막 이곳에 도착했다. 장면을 시작해 주세요.)" });
+  else if (turns.at(-1).role === "assistant")
+    turns.push({ role: "user", content: "(선생님은 잠시 말없이 지켜본다. 새 사건을 만들지 말고, 지금 장면 안에서 인물들의 반응을 자연스럽게 이어 주세요.)" });
+  return turns;
+}
+
+// ───────── 호감도·기억 (Python app/memory.py 를 옮긴 것) ─────────
+const TAG = /\[호감도\s+([\w*]+)\s*:\s*([+-]?\d+)\]/g;
+const SCENE_TAG = /\[장면\s+([^\]]*)\]/g;
+
+// 응답에서 내부 태그를 떼어 내고 {보이는 글, 호감도 변화, 장면}을 돌려준다.
+function parseReply(raw) {
+  const changes = {};
+  for (const [, sid, d] of raw.matchAll(TAG)) changes[sid] = Math.max(-2, Math.min(2, parseInt(d, 10)));
+  let scene = null;
+  for (const [, body] of raw.matchAll(SCENE_TAG)) {
+    const field = (name) => (body.match(new RegExp(name + "\\s*[:：]\\s*([^|]*)")) || [])[1]?.trim() || "";
+    const present = field("등장").split(/[,，\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => state.students[x]);
+    scene = { place: field("장소").slice(0, 60), time: field("시간").slice(0, 30), present: [...new Set(present)].slice(0, 8) };
+  }
+  return { text: raw.replace(TAG, "").replace(SCENE_TAG, "").trim(), changes, scene };
+}
+// 스트리밍 중에는 반쯤 쓰인 태그(끝부분의 '[호감도…', '[장면…')도 숨긴다.
+const visibleText = (t) => t.replace(TAG, "").replace(SCENE_TAG, "").replace(/\[(호|장|호감|장면|호감도)?[^\]\n]{0,120}$/, "").trim();
+
+// 명부에 있는 학생이라면 누구든 호감도가 반영된다 (자유 모드에서 새로 만난 학생 포함).
+function applyAffection(room, changes, sign = 1) {
+  const applied = {};
+  for (const [sid, d] of Object.entries(changes)) {
+    if (!state.students[sid] || !d) continue; // 명부에 없는 id를 AI가 지어내면 무시
+    const b = { ...bondOf(sid) };
+    b.affection = Math.max(0, Math.min(100, b.affection + sign * d));
+    state.bonds[sid] = b; applied[sid] = d;
+  }
+  return applied;
+}
+
+const SUMMARY_TRIGGER = 30, KEEP_RECENT = 12, MAX_STORED = 160;
+
+async function maybeSummarize(room) {
+  const pending = room.messages.slice(room.summarized_count);
+  if (pending.length <= SUMMARY_TRIGGER || !state.sample) return;
+  const chunk = pending.slice(0, pending.length - KEEP_RECENT);
+  const cast = [...new Set([...room.student_list, ...(room.met || [])])].filter((i) => state.students[i]).slice(0, 30);
+  const names = cast.map((i) => `${state.students[i].name}(${i})`).join(", ");
+  const mems = cast.map((i) => `- ${i}: ${bondOf(i).memory || "(없음)"}`).join("\n");
+  const prompt = `당신은 롤플레이 기록을 정리하는 서기입니다. 등장 학생: ${names}
+아래 대화를 읽고 JSON 하나만 출력하세요.
+{"room_summary": "기존 요약과 새 대화를 합친 줄거리 요약. 사건 순서, 약속, 현재 상황 위주로 8문장 이내", "student_memories": {"학생id": "이 학생이 다음 만남에도 기억할 만한 선생님과의 핵심 사실 (2문장 이내)"}}
+기존 요약: ${room.summary || "(없음)"}
+학생별 기존 기억:
+${mems}
+
+[대화]
+${chunk.map((m) => `${m.role === "user" ? "선생님" : "이야기"}: ${m.content}`).join("\n")}`;
+  try {
+    const data = await state.sample.json(prompt, { cache: false });
+    room.summary = String(data?.room_summary || room.summary).slice(0, 2000);
+    for (const [sid, mem] of Object.entries(data?.student_memories || {}))
+      if (cast.includes(sid) && mem) state.bonds[sid] = { ...bondOf(sid), memory: String(mem).slice(0, 400) };
+    room.summarized_count += chunk.length;
+    await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
+    toast("대화가 길어져 앞부분을 기억으로 정리했습니다.");
+  } catch { /* 요약 실패는 치명적이지 않다. 다음 메시지 때 다시 시도한다. */ }
+}
+
+// ───────── 대화방 저장 ─────────
+async function saveRoom(room) {
+  // 문서 하나의 크기 제한(256KB) 때문에, 이미 요약된 오래된 메시지부터 덜어 낸다.
+  const drop = Math.min(Math.max(0, room.messages.length - MAX_STORED), room.summarized_count);
+  if (drop) { room.messages.splice(0, drop); room.summarized_count -= drop; }
+  room.updated_at = nowIso();
+  const meta = { id: room.id, title: room.title, mode: room.mode, student_list: room.mode === "free" ? (room.met || []) : room.student_list, updated_at: room.updated_at };
+  state.rooms = [meta, ...state.rooms.filter((r) => r.id !== room.id)];
+  renderRooms();
+  await store.set("room-" + room.id, room);
+  await store.set("roomindex", { rooms: state.rooms });
+}
+
+// ───────── 화면 전환 ─────────
+function showView(name) {
+  for (const v of ["free", "roster", "stories", "world", "chat"]) $(`#view-${v}`).hidden = v !== name;
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === name));
+  $("#sidebar").classList.remove("open");
+  if (name !== "chat") { state.ctl?.abort(); state.room = null; $("#topbar-title").textContent = "키보토스 채팅"; renderRooms(); }
+}
+document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => showView(t.dataset.view)));
+$("#open-sidebar").onclick = () => $("#sidebar").classList.add("open");
+$("#close-sidebar").onclick = () => $("#sidebar").classList.remove("open");
+
+// ───────── 학생 명부 ─────────
+function renderFilters() {
+  $("#school-filter").innerHTML = [["", { name: "전체" }], ...Object.entries(state.schools)]
+    .map(([k, s]) => `<button class="chip" data-school="${k}" aria-pressed="${state.schoolFilter === k}">${esc(s.name)}</button>`).join("");
+  $("#school-filter").querySelectorAll(".chip").forEach((c) => (c.onclick = () => { state.schoolFilter = c.dataset.school; renderFilters(); renderRoster(); }));
+}
+function renderRoster() {
+  const q = $("#search").value.trim().toLowerCase();
+  const list = Object.values(state.students).filter((s) => (!state.schoolFilter || s.school === state.schoolFilter) &&
+    (!q || [s.name, s.full_name, s.club, schoolOf(s).name].some((v) => (v || "").toLowerCase().includes(q))));
+  $("#roster").innerHTML = list.length ? list.map((s) => `<li><button data-id="${s.id}" style="--school:${schoolOf(s).color}">${halo(s)}
+      <span class="who"><strong>${esc(s.name)}${s.detail === "basic" ? '<span class="tag-basic">자료 보강 중</span>' : ""}</strong>
+      <span>${esc(schoolOf(s).name)} · ${esc(s.club || "무소속")}</span></span></button></li>`).join("")
+    : `<li class="empty">조건에 맞는 학생이 없습니다. 검색어나 학교 필터를 바꿔 보세요.</li>`;
+  $("#roster").querySelectorAll("button").forEach((b) => (b.onclick = () => openStudentSheet(b.dataset.id)));
+}
+$("#search").oninput = renderRoster;
+
+function openStudentSheet(id) {
+  const s = state.students[id], b = state.bonds[id];
+  const facts = [["학교", schoolOf(s).name + (s.year ? ` ${s.year}` : "")], ["소속", s.club], ["생일", s.birthday], ["키", s.height], ["취미", s.hobby], ["무기", s.weapon]].filter(([, v]) => v);
+  const others = Object.keys(state.world.outfit_contexts).filter((o) => !s.outfits?.includes(o));
+  $("#sheet-body").innerHTML = `
+    <div class="sheet-top">${halo(s, "big")}<div><h2>${esc(s.full_name)}</h2>
+      <p class="muted">${b ? `관계: ${esc(stageOf(b.affection).name)} (${b.affection}/100)` : "아직 대화한 적이 없습니다."}</p></div></div>
+    ${s.personality ? `<p>${esc(s.personality)}</p>` : ""}
+    ${s.detail === "basic" ? `<p class="muted">공개된 자료가 적은 학생입니다. 대화 중 설정이 단순할 수 있습니다.</p>` : ""}
+    <dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    <label for="f-outfit">차림
+      <select id="f-outfit" name="outfit"><option value="">평상시 (교복)</option>
+        ${s.outfits?.length ? `<optgroup label="게임에 나온 차림">${s.outfits.map((o) => `<option>${esc(o)}</option>`).join("")}</optgroup>` : ""}
+        <optgroup label="그 밖의 상황">${others.map((o) => `<option>${esc(o)}</option>`).join("")}</optgroup>
+      </select></label>
+    <label for="f-situation">상황 설정 (선택)
+      <textarea id="f-situation" name="situation" rows="3" maxlength="1000" placeholder="예: 비 오는 날 샬레에서 서류 정리를 돕다가 둘만 남았다."></textarea></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button>
+      <button class="btn ghost" id="sheet-meet">자유 모드로 만나러 가기</button>
+      <button class="btn primary" id="sheet-start">1:1 대화</button></div>`;
+  $("#sheet-meet").onclick = (e) => { e.preventDefault(); $("#sheet").close(); meetInFree(id); };
+  $("#sheet-start").onclick = (e) => {
+    e.preventDefault();
+    const f = new FormData($("#sheet-body")); $("#sheet").close();
+    createRoom({ mode: "single", student_ids: [id], outfit: f.get("outfit") || "", situation: (f.get("situation") || "").trim() });
+  };
+  $("#sheet").showModal();
+}
+
+// ───────── 스토리 ─────────
+function renderScenarios() {
+  $("#scenario-list").innerHTML = state.scenarios.map((sc) => `<li><button data-id="${sc.id}"><h2>${esc(sc.title)}</h2><span class="loc">${esc(sc.location)}</span><span>${esc(sc.summary)}</span></button></li>`).join("");
+  $("#scenario-list").querySelectorAll("button").forEach((b) => (b.onclick = () => openStorySheet(b.dataset.id)));
+}
+function openStorySheet(id) {
+  const sc = state.scenarios.find((x) => x.id === id), chosen = new Set(sc.students), all = Object.values(state.students);
+  $("#sheet-body").innerHTML = `<h2>${esc(sc.title)}</h2><p>${esc(sc.summary)}</p>
+    <label for="pick-q">함께할 학생 (최대 6명)<input id="pick-q" type="search" placeholder="이름으로 찾아 추가"></label>
+    <div id="pick" class="pick"></div>
+    <label for="f-situation">상황 설정 ${sc.opening ? "(선택)" : "(자유 시나리오는 적어 주세요)"}
+      <textarea id="f-situation" name="situation" rows="3" maxlength="1000" placeholder="예: 밀레니엄 학생들과 아비도스로 원정 간다."></textarea></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button><button class="btn primary" id="sheet-start">이야기 시작</button></div>`;
+  const paint = () => {
+    const q = $("#pick-q").value.trim();
+    $("#pick").innerHTML = all.filter((s) => chosen.has(s.id) || (q ? s.name.includes(q) : false)).slice(0, 60)
+      .map((s) => `<button type="button" class="chip" data-id="${s.id}" aria-pressed="${chosen.has(s.id)}">${esc(s.name)}</button>`).join("")
+      || `<span class="muted">이름을 입력해 학생을 찾으세요.</span>`;
+    $("#pick").querySelectorAll(".chip").forEach((c) => (c.onclick = () => {
+      if (chosen.has(c.dataset.id)) chosen.delete(c.dataset.id);
+      else if (chosen.size < 6) chosen.add(c.dataset.id); else toast("스토리에는 최대 6명까지 함께할 수 있습니다.");
+      paint();
+    }));
+  };
+  $("#pick-q").oninput = paint; paint();
+  $("#sheet-start").onclick = (e) => {
+    e.preventDefault();
+    if (!chosen.size) return toast("학생을 한 명 이상 고르세요.");
+    const situation = (new FormData($("#sheet-body")).get("situation") || "").trim();
+    if (!sc.opening && !situation) return toast("자유 시나리오는 상황 설정을 적어 주세요.");
+    $("#sheet").close();
+    createRoom({ mode: "story", student_ids: [...chosen], scenario_id: sc.id, situation });
+  };
+  $("#sheet").showModal();
+}
+
+// ───────── 자유 모드 ─────────
+function renderPlaces() {
+  $("#place-list").innerHTML = state.world.places.map((p) => `<li><button data-id="${p.id}"><h2 ${p.school ? `style="color:${state.schools[p.school]?.color}"` : ""}>${esc(p.name)}</h2>
+      <span class="loc">${esc(p.school ? state.schools[p.school]?.full_name : "D.U. 자치구")}</span><span>${esc(p.desc)}</span></button></li>`).join("");
+  $("#place-list").querySelectorAll("button").forEach((b) => (b.onclick = () => openPlaceSheet(b.dataset.id)));
+}
+function openPlaceSheet(id) {
+  const p = state.world.places.find((x) => x.id === id);
+  $("#sheet-body").innerHTML = `<h2>${esc(p.name)}</h2><p>${esc(p.desc)}</p>
+    <label for="f-situation">상황 설정 (선택)
+      <textarea id="f-situation" name="situation" rows="3" maxlength="1000" placeholder="예: 비 오는 오후, 우산을 깜빡한 채 들렀다."></textarea></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button><button class="btn primary" id="sheet-start">여기서 시작</button></div>`;
+  $("#sheet-start").onclick = (e) => {
+    e.preventDefault();
+    const situation = (new FormData($("#sheet-body")).get("situation") || "").trim();
+    $("#sheet").close();
+    createRoom({ mode: "free", place_id: id, situation });
+  };
+  $("#sheet").showModal();
+}
+// 학생 상세에서 '자유 모드로 만나러 가기': 그 학생의 학원 장소에서 시작 (해당 장소가 없으면 샬레)
+function meetInFree(sid) {
+  const s = state.students[sid];
+  const place = state.world.places.find((p) => p.school === s.school) || state.world.places[0];
+  createRoom({ mode: "free", place_id: place.id, meet: sid });
+}
+
+// ───────── 세계관 ─────────
+function renderWorld() {
+  $("#world").innerHTML = [
+    ...state.world.sections.map((s) => `<article><h2>${esc(s.title)}</h2><p>${esc(s.body)}</p></article>`),
+    ...Object.values(state.schools).map((s) => `<article><h2 style="color:${s.color}">${esc(s.full_name)}</h2><p>${esc(s.summary)}</p></article>`),
+  ].join("");
+}
+
+// ───────── 선생님 이름 ─────────
+function renderMe() { $("#me-name").textContent = state.profile.sensei_name ? `${state.profile.sensei_name} 선생님` : "선생님"; }
+$("#open-settings").onclick = () => {
+  $("#sheet-body").innerHTML = `<h2>선생님 이름</h2><p class="muted">학생들이 이야기 속에서 참고하는 이름입니다. 비워 두면 '선생님'으로만 불립니다.</p>
+    <label for="f-name">이름<input id="f-name" maxlength="20" value="${esc(state.profile.sensei_name)}"></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button><button class="btn primary" id="save-name">저장</button></div>`;
+  $("#save-name").onclick = async (e) => {
+    e.preventDefault();
+    state.profile.sensei_name = $("#f-name").value.trim().slice(0, 20);
+    $("#sheet").close(); renderMe();
+    await store.set("profile", state.profile); toast("이름을 저장했습니다.");
+  };
+  $("#sheet").showModal();
+};
+
+// ───────── 대화방 목록 ─────────
+function renderRooms() {
+  $("#room-list").innerHTML = state.rooms.length ? state.rooms.map((r) => `<li><button data-id="${r.id}" class="${state.room?.id === r.id ? "active" : ""}">
+      <span>${esc(r.title)}</span><span class="room-meta">${{ story: "스토리", free: `자유 · 만난 학생 ${r.student_list.length}명`, single: "1:1" }[r.mode]} ·${new Date(r.updated_at).toLocaleDateString("ko-KR")}</span></button></li>`).join("")
+    : `<li class="empty">아직 대화가 없습니다. 학생 명부에서 학생을 골라 보세요.</li>`;
+  $("#room-list").querySelectorAll("button").forEach((b) => (b.onclick = () => openRoom(b.dataset.id)));
+}
+
+async function createRoom({ mode, student_ids = [], outfit = "", scenario_id = "", situation = "", place_id = "", meet = "" }) {
+  const first = state.students[student_ids[0]];
+  const sc = scenario_id ? state.scenarios.find((x) => x.id === scenario_id) : null;
+  const place = place_id ? state.world.places.find((p) => p.id === place_id) : null;
+  const room = {
+    id: newId(), mode, student_list: student_ids, outfit, scenario_id, situation, summary: "", summarized_count: 0,
+    title: mode === "story" ? (sc?.title || "자유 스토리") : mode === "free" ? `자유 모드 · ${place?.name || "키보토스"}`
+      : first.name + (outfit ? ` (${outfit})` : ""),
+    messages: sc?.opening ? [{ role: "assistant", content: sc.opening, affection: {} }] : [],
+  };
+  if (mode === "free") {
+    room.place_id = place_id;
+    room.met = meet ? [meet] : [];
+    room.scene0 = { place: place?.name || "", time: "", present: meet ? [meet] : [] };
+    if (meet) room.situation = `선생님은 ${state.students[meet].name}을(를) 만나러 왔다. ${situation}`.trim();
+  } else if (sc?.opening) {
+    room.scene0 = { place: sc.location, time: "", present: sc.students.filter((i) => student_ids.includes(i)) };
+  }
+  for (const sid of student_ids) if (!state.bonds[sid]) state.bonds[sid] = { affection: 20, memory: "" };
+  showView("chat"); state.room = room; renderChat();
+  await saveRoom(room);
+  if (!room.messages.length) runTurn("continue"); // 오프닝이 없으면 학생이 먼저 말을 건다
+}
+
+async function openRoom(id) {
+  const room = await store.get("room-" + id);
+  if (!room) { toast("대화를 불러오지 못했습니다."); state.rooms = state.rooms.filter((r) => r.id !== id); renderRooms(); return; }
+  showView("chat"); state.room = room; renderChat(); renderRooms();
+}
+
+// ───────── 채팅 그리기 ─────────
+function renderAssistant(text) {
+  return text.split(/\n+/).filter((l) => l.trim()).map((raw) => {
+    const line = raw.trim();
+    const narr = line.match(/^\*(.+)\*$/);
+    if (narr) return `<p class="narr">${esc(narr[1])}</p>`;
+    const talk = line.match(/^([^:："*]{1,16})[:：]\s*["“](.*?)["”]?$/);
+    if (talk) {
+      const st = findStudentByName(talk[1].trim());
+      const face = st ? halo(st) : `<span class="halo"><span class="face" aria-hidden="true">${esc(talk[1][0])}</span></span>`;
+      return `<div class="line">${face}<div class="bubble" ${st ? `style="--school:${schoolOf(st).color}"` : ""}><b>${esc(talk[1])}</b>${esc(talk[2])}</div></div>`;
+    }
+    return `<p class="plain">${esc(line)}</p>`;
+  }).join("");
+}
+function affectionNote(aff) {
+  const p = Object.entries(aff || {}).filter(([, d]) => d).map(([id, d]) => `${state.students[id]?.name ?? id} ${d > 0 ? "+" : ""}${d}`);
+  return p.length ? `<span class="affection-note">호감도 ${esc(p.join(", "))}</span>` : "";
+}
+// data-i = room.messages 안의 위치. 메시지를 누르면 이 번호로 삭제 대상을 찾는다.
+const messageHtml = (m, i) => m.role === "user" ? `<li class="msg user" data-i="${i}">${esc(m.content)}</li>`
+  : `<li class="msg assistant" data-i="${i}">${renderAssistant(m.content)}${affectionNote(m.affection)}</li>`;
+
+function renderChatHead() {
+  const room = state.room, scene = currentScene(room);
+  // 자유 모드는 지금 장면에 있는 학생, 나머지는 방에 고정된 학생을 보여 준다.
+  const ids = room.mode === "free" ? (scene?.present || []) : room.student_list;
+  const studs = ids.map((i) => state.students[i]).filter(Boolean);
+  $("#chat-halos").innerHTML = studs.slice(0, 4).map((s) => halo(s, "big")).join("");
+  $("#chat-title").textContent = room.title;
+  $("#topbar-title").textContent = room.title;
+  let sub;
+  if (room.mode === "single" && studs[0]) sub = `${stageOf(bondOf(studs[0].id).affection).name} · 호감도 ${bondOf(studs[0].id).affection}`;
+  else sub = [scene?.place, scene?.time].filter(Boolean).join(" · ") + (studs.length ? ` — ${studs.map((s) => `${s.name} ${bondOf(s.id).affection}`).join(", ")}` : "");
+  $("#chat-sub").textContent = sub || "장면을 준비하는 중";
+}
+
+function renderChat({ keepScroll = false } = {}) {
+  clearSelection(); // 다시 그리면 메시지 번호가 바뀔 수 있으므로 선택을 푼다
+  renderChatHead();
+  const room = state.room, box = $("#messages"), top = box.scrollTop;
+  box.innerHTML = room.messages.length ? room.messages.map(messageHtml).join("") : `<li class="empty">첫 마디를 건네 보세요.</li>`;
+  if (keepScroll) { box.scrollTop = top; updateJump(); } else scrollDown();
+}
+
+// ───────── 메시지 삭제: 메시지를 누르면 입력칸 위에 '삭제' 막대가 나온다 ─────────
+let selected = -1;
+function clearSelection() {
+  selected = -1;
+  document.querySelectorAll(".msg.selected").forEach((el) => el.classList.remove("selected"));
+  $("#msg-bar").hidden = true;
+}
+$("#messages").addEventListener("click", (e) => {
+  const li = e.target.closest(".msg[data-i]");
+  const same = li && Number(li.dataset.i) === selected;
+  clearSelection();
+  if (!li || same || state.busy) return; // 같은 메시지를 다시 누르면 선택 해제
+  selected = Number(li.dataset.i);
+  li.classList.add("selected");
+  const m = state.room.messages[selected];
+  $("#msg-bar-label").textContent = m.role === "user" ? "내 메시지를 선택했습니다" : "답장을 선택했습니다";
+  $("#msg-bar").hidden = false;
+});
+$("#msg-cancel").onclick = clearSelection;
+$("#msg-del").onclick = () => { const i = selected; clearSelection(); deleteMessage(i); };
+
+async function deleteMessage(i) {
+  const room = state.room;
+  if (!room || state.busy || !room.messages[i]) return;
+  const [m] = room.messages.splice(i, 1);
+  applyAffection(room, m.affection || {}, -1); // 지운 답장으로 올랐던 호감도는 되돌린다
+  if (i < room.summarized_count) room.summarized_count--; // 이미 기억으로 정리된 메시지였다면 개수만 맞춘다
+  renderChat({ keepScroll: true });
+  await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
+  toast(m.role === "user" ? "내 메시지를 삭제했습니다." : "답장을 삭제했습니다.");
+}
+
+// ───────── 입력 도우미: " " / * * 넣기 (선택한 글자가 있으면 감싸기) ─────────
+document.querySelectorAll("[data-wrap]").forEach((btn) => {
+  btn.addEventListener("pointerdown", (e) => e.preventDefault()); // 누를 때 입력칸 포커스가 빠져 키보드가 닫히지 않게
+  btn.onclick = () => {
+    const box = $("#input"), mark = btn.dataset.wrap;
+    const { selectionStart: a, selectionEnd: b, value } = box;
+    const picked = value.slice(a, b);
+    box.setRangeText(mark + picked + mark, a, b, "end");
+    if (!picked) box.setSelectionRange(a + 1, a + 1); // 빈칸이면 커서를 기호 사이로
+    box.focus();
+  };
+});
+
+// 스크롤: 맨 아래로 / 새 답장의 시작 위치만 보이게 / 아래에 내용이 남았으면 버튼 표시
+function scrollDown() { const b = $("#messages"); b.scrollTop = b.scrollHeight; updateJump(); }
+function revealStart(el) {
+  const box = $("#messages");
+  if (!el) return;
+  const top = el.offsetTop - box.offsetTop;
+  // 답장 시작이 화면 위쪽 1/4 지점 근처에 오도록 (직전 내 메시지가 위에 살짝 보이게)
+  if (top > box.scrollTop + box.clientHeight * 0.4 || top < box.scrollTop) box.scrollTop = top - box.clientHeight * 0.25;
+  updateJump();
+}
+function updateJump() {
+  const b = $("#messages");
+  $("#jump").hidden = b.scrollHeight - b.scrollTop - b.clientHeight < 80;
+}
+$("#messages").addEventListener("scroll", updateJump, { passive: true });
+$("#jump").onclick = () => $("#messages").scrollTo({ top: $("#messages").scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+
+function setBusy(on) {
+  state.busy = on;
+  if (on) clearSelection();
+  ["#btn-continue", "#btn-regen", "#btn-undo"].forEach((s) => ($(s).disabled = on));
+  $("#send").textContent = on ? "멈추기" : "보내기";
+}
+
+const ERROR_TEXT = {
+  not_granted: "Claude 사용이 허용되지 않았습니다. 페이지를 새로 열면 다시 물어봅니다.",
+  sampling_disabled: "이 계정에서는 Claude 응답을 쓸 수 없습니다.",
+  rate_limited: "요청이 너무 많거나 사용 한도에 닿았습니다. 잠시 뒤 다시 시도하세요.",
+  session_expired: "claude.ai에 다시 로그인한 뒤 시도하세요.",
+  refused: "이 내용에는 답할 수 없습니다. 다른 방향으로 이야기를 이어 보세요.",
+  prompt_too_large: "대화가 너무 깁니다. 되돌리기로 몇 턴을 지우거나 새 대화를 시작하세요.",
+  empty_completion: "응답이 비어 있습니다. 다시 생성해 보세요.",
+};
+
+// kind: "send" | "continue" | "regenerate"
+async function runTurn(kind) {
+  const room = state.room;
+  if (!room || state.busy) return;
+  if (!state.sample) {
+    $("#messages").insertAdjacentHTML("beforeend", `<li class="error-line">이 화면에서는 AI 응답을 쓸 수 없습니다. claude.ai 앱이나 웹에서 이 페이지를 열어 주세요.</li>`);
+    return scrollDown();
+  }
+  if (kind === "regenerate") {
+    const last = room.messages.at(-1);
+    if (!last || last.role !== "assistant" || room.messages.length <= room.summarized_count) return toast("다시 생성할 응답이 없습니다.");
+    applyAffection(room, last.affection || {}, -1);
+    room.messages.pop(); renderChat();
+  }
+  const ctl = new AbortController(); state.ctl = ctl;
+  setBusy(true);
+  $("#messages").querySelector(".empty")?.remove();
+  $("#messages").insertAdjacentHTML("beforeend", `<li class="msg assistant" id="live"><span class="status-line">답장을 쓰는 중…</span></li>`);
+  // 답장 자리를 미리 확보하고 시작 부분까지만 한 번 내려 준다. 써지는 동안에는 화면을 움직이지 않는다.
+  $("#live").style.minHeight = Math.round($("#messages").clientHeight * 0.6) + "px";
+  revealStart($("#live"));
+  try {
+    const { text: raw, truncated } = await state.sample(buildTurns(room), {
+      cache: false, signal: ctl.signal, modelTier: $("#tier").value,
+      onText: ({ text }) => { const live = $("#live"); if (live && state.room === room) { live.innerHTML = renderAssistant(visibleText(text)); updateJump(); } },
+    });
+    const { text, changes, scene } = parseReply(raw);
+    const applied = applyAffection(room, changes);
+    const msg = { role: "assistant", content: text || "*(응답이 비어 있습니다. 다시 생성해 보세요.)*", affection: applied };
+    if (scene) msg.scene = scene;
+    room.messages.push(msg);
+    if (room.mode === "free") {
+      room.met = [...new Set([...(room.met || []), ...(scene?.present || []), ...Object.keys(applied)])];
+      for (const sid of room.met) if (!state.bonds[sid]) state.bonds[sid] = { affection: 20, memory: "" };
+    }
+    if (state.room === room) {
+      // 전체를 다시 그리지 않고, 쓰던 말풍선만 완성본으로 바꾼다 (읽던 위치 유지)
+      const live = $("#live");
+      if (live) { live.outerHTML = messageHtml(msg, room.messages.length - 1); } else renderChat();
+      renderChatHead();
+      Object.keys(applied).forEach((id) => document.querySelectorAll(`[data-halo="${id}"]`).forEach((h) => h.classList.add("bump")));
+      updateJump();
+      if (truncated) toast("응답이 길어 중간에 끊겼습니다. '이어서 진행'을 눌러 보세요.");
+    }
+    await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
+    maybeSummarize(room);
+  } catch (e) {
+    const keep = e?.text ? visibleText(e.text) : "";
+    if (keep && e.code !== "refused") { // 끊긴 응답이라도 쓰인 부분은 남긴다
+      room.messages.push({ role: "assistant", content: keep, affection: {} });
+      await saveRoom(room);
+    }
+    if (state.room === room) {
+      renderChat();
+      if (e?.code !== "cancelled") {
+        $("#messages").insertAdjacentHTML("beforeend", `<li class="error-line">${esc(ERROR_TEXT[e?.code] || "응답을 받지 못했습니다. 잠시 뒤 다시 시도하세요.")}</li>`);
+        scrollDown();
+      }
+    }
+    if (e?.code === "not_granted" || e?.code === "sampling_disabled") state.sample = null;
+  } finally {
+    if (state.ctl === ctl) state.ctl = null;
+    setBusy(false);
+  }
+}
+
+$("#composer").onsubmit = async (e) => {
+  e.preventDefault();
+  if (state.busy) { state.ctl?.abort(); return; } // 응답 중에는 '멈추기' 버튼
+  const text = $("#input").value.trim();
+  if (!text || !state.room) return;
+  $("#input").value = "";
+  state.room.messages.push({ role: "user", content: text, affection: {} });
+  renderChat();
+  await saveRoom(state.room);
+  runTurn("send");
+};
+$("#input").onkeydown = (e) => {
+  // 모바일 키보드의 Enter는 줄바꿈으로 두고, 전송은 버튼으로 한다.
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(hover: hover)").matches) { e.preventDefault(); $("#composer").requestSubmit(); }
+};
+$("#btn-continue").onclick = () => runTurn("continue");
+$("#btn-regen").onclick = () => runTurn("regenerate");
+$("#btn-undo").onclick = async () => {
+  const room = state.room; if (!room || state.busy) return;
+  let removed = false;
+  while (room.messages.length > room.summarized_count) {
+    const m = room.messages.pop(); removed = true;
+    applyAffection(room, m.affection || {}, -1);
+    if (m.role === "user") break;
+  }
+  if (!removed) return toast("되돌릴 대화가 없습니다.");
+  renderChat();
+  await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
+};
+// 브라우저 confirm()은 이 화면에서 동작하지 않아서 시트로 확인한다.
+$("#delete-room").onclick = () => {
+  const room = state.room; if (!room) return;
+  $("#sheet-body").innerHTML = `<h2>대화 삭제</h2><p>'${esc(room.title)}' 대화를 삭제할까요? 되돌릴 수 없습니다. 학생들의 호감도와 기억은 그대로 남습니다.</p>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">취소</button><button class="btn primary" id="confirm-del">삭제</button></div>`;
+  $("#confirm-del").onclick = async (e) => {
+    e.preventDefault(); $("#sheet").close();
+    state.rooms = state.rooms.filter((r) => r.id !== room.id);
+    showView("roster");
+    await store.del("room-" + room.id);
+    await store.set("roomindex", { rooms: state.rooms });
+    toast("대화를 삭제했습니다.");
+  };
+  $("#sheet").showModal();
+};
+
+// ───────── 시작 ─────────
+// 명부·스토리·세계관은 데이터가 페이지 안에 있어 바로 그리고, 저장된 대화와 Claude 연결은 뒤이어 붙인다.
+renderFilters(); renderRoster(); renderPlaces(); renderScenarios(); renderWorld(); renderMe();
+(async () => {
+  window.claude?.use("sample").then((s) => (state.sample = s)).catch(() => {});
+  await store.init();
+  renderSaveNote();
+  try {
+    const [profile, bonds, index] = await Promise.all([store.get("profile"), store.get("bonds"), store.get("roomindex")]);
+    if (profile) state.profile = { ...state.profile, ...profile };
+    state.bonds = bonds?.bonds || {};
+    state.rooms = index?.rooms || [];
+  } catch { toast("저장된 대화를 불러오지 못했습니다. 잠시 뒤 새로 고침해 보세요."); }
+  renderMe(); renderRooms(); renderRoster();
+})();
+</script>

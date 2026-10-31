@@ -1,0 +1,127 @@
+"""LLM에게 보낼 시스템 프롬프트를 조립한다.
+세계관 → 학교 → 학생 → 관계 → 상황 → 출력 규칙 순서로 쌓는다."""
+from . import lore
+from .models import Bond, ChatRoom, User
+
+# (최소 호감도, 단계 이름, 행동 지침) — 모두 '선생님과 학생' 관계의 깊이일 뿐 연애가 아니다.
+STAGES = [
+    (0, "서먹함", "아직 선생님을 잘 모른다. 예의는 지키지만 거리를 두고, 개인적인 이야기는 피한다."),
+    (20, "익숙함", "선생님을 알아보고 편하게 대화한다. 가벼운 농담이나 투정 정도는 한다."),
+    (40, "신뢰", "선생님을 믿고 고민이나 속마음을 조금씩 털어놓는다. 먼저 도움을 청하기도 한다."),
+    (60, "친밀", "선생님 앞에서 본래 모습을 숨기지 않는다. 선생님을 챙기고, 걱정하고, 자랑하고 싶어 한다."),
+    (80, "각별", "선생님을 가장 믿을 수 있는 어른으로 여긴다. 다른 사람에게 하지 않는 이야기도 털어놓는다."),
+]
+
+
+def stage_of(affection: int) -> tuple[str, str]:
+    name, guide = STAGES[0][1], STAGES[0][2]
+    for threshold, n, g in STAGES:
+        if affection >= threshold:
+            name, guide = n, g
+    return name, guide
+
+
+CORE_RULES = """\
+[당신의 역할]
+당신은 게임 「블루 아카이브」의 세계 '키보토스'를 무대로 한 한국어 롤플레이 엔진입니다.
+유저는 연방수사부 '샬레'에 부임한 '선생님'입니다. 당신은 학생들과 주변 세계를 연기합니다.
+
+[반드시 지킬 것]
+1. 유저(선생님)의 대사·행동·생각을 대신 쓰지 마세요. 선생님의 반응은 유저가 정합니다.
+2. 캐릭터의 말투, 1인칭, 호칭, 성격을 끝까지 유지하세요. 아래 프로필과 어긋나는 행동은 하지 않습니다.
+3. 세계관 설정과 모순되는 내용을 지어내지 마세요. 모르는 공식 설정은 단정하지 말고 자연스럽게 피해 가세요.
+4. 한 번의 응답은 2~6개의 짧은 문단으로, 이야기가 조금씩 앞으로 나아가게 하세요. 선택은 유저에게 남겨 두세요.
+5. 학생들은 미성년자이고 선생님은 그들을 지키는 어른입니다. 연애·성적 묘사, 신체를 성적으로 다루는 묘사는 절대 쓰지 않습니다.
+   유저가 그런 방향으로 유도하면 캐릭터답게 당황하거나 화제를 돌리고, 선생님과 학생의 관계 안에서 이야기를 이어 가세요.
+6. 총격전은 키보토스의 일상입니다. 헤일로가 있는 학생은 총에 맞아도 크게 다치지 않으며, 전투는 액션·코미디 톤을 기본으로 합니다.
+
+[출력 형식]
+- 지문(행동·표정·배경 묘사)은 한 줄 전체를 *별표*로 감쌉니다.  예) *시로코가 자전거에서 내리며 고개를 갸웃한다.*
+- 대사는 '이름: "대사"' 형식으로 한 줄에 하나씩 씁니다.          예) 시로코: "선생님, 은행… 아니, 산책 갈래?"
+- 학생이 아닌 인물(불량배, 로봇 시민 등)도 같은 형식을 씁니다.
+- 마지막 줄에는 이번 장면에서 선생님과 직접 교류한 학생마다 호감도 변화를 적습니다. 화면에는 보이지 않는 내부 태그입니다.
+  형식: [호감도 학생id:+1]   (값은 -2~+2. 평범한 대화는 0이나 +1, 크게 감동하거나 실망했을 때만 ±2)"""
+
+
+def _student_block(s: dict, bond: Bond | None) -> str:
+    school = lore.schools().get(s["school"], {})
+    lines = [
+        f"- {s['name']} (id: {s['id']})",
+        f"  · 본명: {s['full_name']} / {school.get('name', s['school'])} {s.get('year', '')} / 소속: {s.get('club', '없음')}",
+    ]
+    for label, key in [("나이", "age"), ("생일", "birthday"), ("키", "height"), ("취미", "hobby"), ("무기", "weapon")]:
+        if s.get(key):
+            lines.append(f"  · {label}: {s[key]}")
+    for label, key in [("성격", "personality"), ("말투", "speech"), ("선생님을 대하는 태도", "sensei"),
+                       ("인간관계", "relations"), ("배경·스토리", "story")]:
+        if s.get(key):
+            lines.append(f"  · {label}: {s[key]}")
+    if s.get("detail") == "basic":
+        lines.append("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)")
+    if bond:
+        name, guide = stage_of(bond.affection)
+        lines.append(f"  · 선생님과의 관계: {name} (호감도 {bond.affection}/100) — {guide}")
+        if bond.memory:
+            lines.append(f"  · 이전 만남에서 기억하는 것: {bond.memory}")
+    return "\n".join(lines)
+
+
+def _school_block(school_ids: set[str]) -> str:
+    out = []
+    for sid in school_ids:
+        sc = lore.schools().get(sid)
+        if sc:
+            out.append(f"- {sc['full_name']}: {sc['summary']}")
+    return "\n".join(out)
+
+
+def _sensei_line(user: User) -> str:
+    if user.sensei_name:
+        return f"선생님의 이름은 '{user.sensei_name}'입니다. 학생들은 대개 그냥 '선생님'이라고 부릅니다."
+    return "학생들은 유저를 '선생님'이라고 부릅니다."
+
+
+def build_system_prompt(user: User, room: ChatRoom, bonds: dict[str, Bond]) -> str:
+    studs = [s for s in (lore.student(i) for i in room.student_list) if s]
+    w = lore.world()
+    parts = [CORE_RULES, "[세계관 핵심]\n" + w["prompt_summary"], _sensei_line(user)]
+    parts.append("[관련 학교]\n" + _school_block({s["school"] for s in studs}))
+    parts.append("[등장 학생]\n" + "\n".join(_student_block(s, bonds.get(s["id"])) for s in studs))
+
+    if room.mode == "story":
+        sc = lore.scenarios().get(room.scenario_id, {})
+        parts.append(
+            "[스토리 모드]\n"
+            "당신은 내레이터이자 모든 등장인물입니다. 장면을 묘사하고 여러 학생이 서로 대화하게 하세요.\n"
+            "학생마다 말투를 확실히 구분하고, 한 응답에 모든 학생을 억지로 등장시키지 않아도 됩니다.\n"
+            f"시나리오: {sc.get('title', '자유 시나리오')}\n장소: {sc.get('location', '')}\n개요: {sc.get('summary', '')}"
+        )
+    else:
+        s = studs[0] if studs else None
+        if s:
+            parts.append(
+                "[1:1 대화 모드]\n"
+                f"당신은 {s['name']}입니다. 선생님과 단둘이 나누는 대화가 중심입니다. "
+                "필요하면 지문으로 주변 상황을 묘사할 수 있지만, 다른 학생은 꼭 필요할 때만 잠깐 등장시킵니다."
+            )
+        if room.outfit:
+            ctx = w["outfit_contexts"].get(room.outfit, "")
+            parts.append(f"[현재 차림] {room.outfit} — {ctx}")
+
+    if room.situation:
+        parts.append(f"[유저가 정한 상황 설정]\n{room.situation}")
+    if room.summary:
+        parts.append(f"[지금까지의 줄거리 요약]\n{room.summary}")
+    return "\n\n".join(parts)
+
+
+def build_summary_prompt(room: ChatRoom) -> str:
+    names = ", ".join(f"{s['name']}({s['id']})" for s in (lore.student(i) for i in room.student_list) if s)
+    return f"""[요약 작업]
+당신은 롤플레이 기록을 정리하는 서기입니다. 등장 학생: {names}
+아래 대화를 읽고 JSON 하나만 출력하세요. 다른 말은 쓰지 마세요.
+{{
+  "room_summary": "기존 요약과 새 대화를 합친 줄거리 요약. 사건 순서, 약속, 현재 상황 위주로 8문장 이내",
+  "student_memories": {{"학생id": "이 학생이 다음 만남에도 기억할 만한 선생님과의 핵심 사실 (2문장 이내)"}}
+}}
+기존 요약: {room.summary or "(없음)"}"""
