@@ -61,12 +61,21 @@ CORE_RULES = """\
     학생의 성격에 맞춰 판단하세요. 겉으로 툴툴대는 학생도 속으로 기뻤다면 호감도는 오릅니다."""
 
 
+
+def honorific_rule(h: str) -> str:
+    """'존댓말'/'반말'만 적으면 AI가 흘려듣기 쉬워서 어미까지 구체적으로 풀어 쓴다."""
+    if h.startswith("존댓말"):
+        return "존댓말 — 선생님에게 하는 모든 대사를 '~요', '~습니다' 같은 존댓말로 끝맺는다. 반말을 절대 섞지 않는다. (반드시 지킬 것)"
+    if h.startswith("반말"):
+        return f"{h} — 선생님에게 '~야', '~어', '~지' 같은 반말을 쓴다. 갑자기 존댓말로 바꾸지 않는다. (반드시 지킬 것)"
+    return f"{h} (반드시 지킬 것)"
+
 def _student_block(s: dict, bond: Bond | None) -> str:
     school = lore.schools().get(s["school"], {})
     lines = [
         f"- {s['name']} (id: {s['id']})",
         f"  · 본명: {s['full_name']} / {school.get('name', s['school'])} {s.get('year', '')} / 소속: {s.get('club', '없음')}",
-        f"  · 선생님에게: {s.get('honorific', '존댓말')} (반드시 지킬 것)",
+        f"  · 선생님에게: {honorific_rule(s.get('honorific', '존댓말'))}",
         f"  · 선생님 호칭: '{s.get('call', '선생님')}' (이 표기 그대로. 선상님·쌤·센세 등으로 바꾸지 말 것)",
     ]
     for label, key in [("나이", "age"), ("생일", "birthday"), ("키", "height"), ("취미", "hobby"), ("무기", "weapon")]:
@@ -80,7 +89,7 @@ def _student_block(s: dict, bond: Bond | None) -> str:
         lines.append("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)")
     if bond:
         name, guide = stage_of(bond.affection)
-        lines.append(f"  · 선생님과의 관계: {name} (호감도 {bond.affection}/100) — {guide}")
+        lines.append(f"  · 선생님과의 관계: {name} (호감도 {bond.affection}/100) — {guide} 단, 친해져도 존댓말/반말과 말투는 바뀌지 않는다.")
         if bond.memory:
             lines.append(f"  · 이전 만남에서 기억하는 것: {bond.memory}")
     return "\n".join(lines)

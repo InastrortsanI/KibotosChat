@@ -452,17 +452,23 @@ const CORE_RULES = `[당신의 역할]
   예) [장면 장소: 샬레 집무실 | 시간: 늦은 오후 | 등장: yuuka, noa]
       [호감도 yuuka:+3]`;
 
+// '존댓말'/'반말'만 적으면 AI가 흘려듣기 쉬워서, 어미까지 구체적으로 풀어 쓴다.
+function honorificRule(h = "존댓말") {
+  if (h.startsWith("존댓말")) return "존댓말 — 선생님에게 하는 모든 대사를 '~요', '~습니다' 같은 존댓말로 끝맺는다. 반말을 절대 섞지 않는다. (반드시 지킬 것)";
+  if (h.startsWith("반말")) return `${h} — 선생님에게 '~야', '~어', '~지' 같은 반말을 쓴다. 갑자기 존댓말로 바꾸지 않는다. (반드시 지킬 것)`;
+  return `${h} (반드시 지킬 것)`;
+}
 function studentBlock(s) {
   const sc = schoolOf(s);
   const L = [`- ${s.name} (id: ${s.id})`, `  · 본명: ${s.full_name} / ${sc.name} ${s.year || ""} / 소속: ${s.club || "없음"}`,
-    `  · 선생님에게: ${s.honorific || "존댓말"} (반드시 지킬 것)`,
+    `  · 선생님에게: ${honorificRule(s.honorific)}`,
     `  · 선생님 호칭: '${s.call || "선생님"}' (이 표기 그대로. 선상님·쌤·센세 등으로 바꾸지 말 것)`];
   for (const [label, k] of [["나이", "age"], ["생일", "birthday"], ["키", "height"], ["취미", "hobby"], ["무기", "weapon"],
     ["성격", "personality"], ["말투", "speech"], ["선생님을 대하는 태도", "sensei"], ["인간관계", "relations"], ["배경·스토리", "story"]])
     if (s[k]) L.push(`  · ${label}: ${s[k]}`);
   if (s.detail === "basic") L.push("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)");
   const b = bondOf(s.id), st = stageOf(b.affection);
-  L.push(`  · 선생님과의 관계: ${st.name} (호감도 ${b.affection}/100) — ${st.guide}`);
+  L.push(`  · 선생님과의 관계: ${st.name} (호감도 ${b.affection}/100) — ${st.guide} 단, 친해져도 존댓말/반말과 말투는 바뀌지 않는다.`);
   if (b.memory) L.push(`  · 이전 만남에서 기억하는 것: ${b.memory}`);
   return L.join("\n");
 }
