@@ -100,6 +100,8 @@ def apply_persona(entry: dict, persona: dict | None) -> dict:
     entry["detail"] = "full" if entry.get("speech") else "basic"
     # 선생님에게 쓰는 높임. 자료가 없으면 더 안전한 존댓말을 기본값으로 둔다.
     entry["honorific"] = persona.get("h", "존댓말")
+    # 선생님을 부르는 호칭 (게임 대사 기준). 대부분 '선생님'이고, 예외만 페르소나의 "c"에 적는다.
+    entry["call"] = persona.get("c", "선생님")
     return entry
 
 
