@@ -111,7 +111,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .scene-line { font-size: .85rem; color: var(--ink-soft); border-top: 1px dashed var(--line); padding-top: .4rem; margin-top: .2rem; }
 .messages { list-style: none; margin: 0; flex: 1; overflow-y: auto; padding-block: 1.5rem; padding-inline: clamp(16px, 4vw, 48px); display: flex; flex-direction: column; gap: 1.2rem; }
 .msg { max-width: 68ch; min-width: 0; word-break: keep-all; } /* 한글이 글자 중간에서 줄바꿈되지 않게 */
-.msg.user { align-self: flex-end; background: var(--blue); color: var(--on-blue); padding: .65rem 1rem; border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg); white-space: pre-wrap; max-width: min(68ch, 85%); overflow-wrap: anywhere; }
+.msg.user { align-self: flex-end; background: var(--blue); color: #ffffff; -webkit-text-fill-color: #ffffff; padding: .65rem 1rem; border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg); white-space: pre-wrap; max-width: min(68ch, 85%); overflow-wrap: anywhere; }
 .msg.assistant { align-self: flex-start; display: grid; gap: .7rem; width: 100%; }
 .narr { color: var(--ink-soft); margin: 0; padding-left: .75rem; border-left: 3px solid var(--line); }
 .line { display: grid; grid-template-columns: auto 1fr; gap: .6rem; align-items: start; }
