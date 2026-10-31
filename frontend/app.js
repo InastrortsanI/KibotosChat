@@ -58,8 +58,14 @@ function halo(st, size = "") {
     <span class="ring"></span><span class="face" aria-hidden="true">${esc(st.name[0])}</span></span>`;
 }
 
+// AI가 대사 이름을 한국어 대신 id나 영어(Hikari, Tachibana Hikari)로 쓸 때도 학생을 찾는다.
 function findStudentByName(name) {
-  return Object.values(state.students).find((s) => s.name === name || s.full_name === name);
+  const n = name.trim();
+  const hit = Object.values(state.students).find((s) => s.name === n || s.full_name === n);
+  if (hit) return hit;
+  const k = n.toLowerCase().replace(/[^a-z_ ]/g, "").trim();
+  if (!k) return null;
+  return state.students[k] || state.students[k.replace(/\s+/g, "_")] || state.students[k.split(/\s+/).pop()] || null;
 }
 
 // AI 응답 한 덩어리를 지문 / 대사 / 일반 문단으로 나눠 그린다.
@@ -73,7 +79,7 @@ function renderAssistant(text) {
       const st = findStudentByName(talk[1].trim());
       const face = st ? halo(st) : `<span class="halo"><span class="face" aria-hidden="true">${esc(talk[1][0])}</span></span>`;
       const color = st ? `style="--school:${schoolOf(st).color}"` : "";
-      return `<div class="line">${face}<div class="bubble" ${color}><b>${esc(talk[1])}</b>${esc(talk[2])}</div></div>`;
+      return `<div class="line">${face}<div class="bubble" ${color}><b>${esc(st ? st.name : talk[1])}</b>${esc(talk[2])}</div></div>`;
     }
     return `<p class="plain">${esc(line)}</p>`;
   }).join("");
