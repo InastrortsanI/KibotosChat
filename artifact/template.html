@@ -522,7 +522,8 @@ function focusStudents(room) {
 
 // 자유 모드용 전체 학생 요약 명부 (id|이름|학교|소속|말투 앞부분)
 function rosterDigest() {
-  return Object.values(state.students).map((s) => {
+  // 아로나·프라나는 장면에 '등장'하는 인물이 아니므로(태블릿 속 OS) 자유 모드 명부에서 뺀다.
+  return Object.values(state.students).filter((s) => s.school !== "Shittim").map((s) => {
     const speech = (s.speech || "").split(/[.。]/)[0].slice(0, 50);
     const trait = (s.personality || "").split(/[.。]/).slice(1, 2).join("").trim().slice(0, 45); // 첫 문장(소속 소개) 다음 문장 = 성격 핵심
     return `${s.id}|${s.name}|${schoolOf(s).name}|${s.club || "무소속"}|선생님에게 ${s.honorific || "존댓말"}|호칭 '${s.call || "선생님"}'|${speech}${trait ? "|" + trait : ""}`;
@@ -553,6 +554,7 @@ ${rosterDigest()}`);
     parts.push(`[스토리 모드]\n당신은 내레이터이자 모든 등장인물입니다. 장면을 묘사하고 여러 학생이 서로 대화하게 하세요.\n학생마다 말투를 확실히 구분하고, 한 응답에 모든 학생을 억지로 등장시키지 않아도 됩니다.\n시나리오: ${sc.title || "자유 시나리오"}\n장소: ${sc.location || ""}\n개요: ${sc.summary || ""}`);
   } else if (studs[0]) {
     parts.push(`[1:1 대화 모드]\n당신은 ${studs[0].name}입니다. 선생님과 단둘이 나누는 대화가 중심입니다. 필요하면 지문으로 주변 상황을 묘사할 수 있지만, 다른 학생은 꼭 필요할 때만 잠깐 등장시킵니다.`);
+    if (studs[0].school === "Shittim") parts.push("[싯딤의 상자] 선생님은 지금 태블릿 '싯딤의 상자'를 보며 그 안의 OS와 대화하고 있습니다. 대화 상대는 화면 속 존재이며, 주변에 학생이 있다면 선생님이 태블릿에 혼잣말하는 것으로 보입니다.");
     if (room.outfit) parts.push(`[현재 차림] ${room.outfit} — ${state.world.outfit_contexts[room.outfit] || ""}`);
   }
   if (room.situation) parts.push(`[유저가 정한 상황 설정]\n${room.situation}`);

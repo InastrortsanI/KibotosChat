@@ -80,6 +80,9 @@ NEW_STUDENTS = [
     ("kokuriko", "코쿠리코", "코쿠리코", "Hyakkiyako", "화조풍월부", ""),
     ("kiki", "키키", "키키", "Shanhaijing", "매화원 원생", ""),
     ("natsuki", "나츠키", "아사쿠사 나츠키", "Hyakkiyako", "인력거부", ""),
+    # 싯딤의 상자 OS (학생이 아님. 학생들은 둘을 인식하지 못한다)
+    ("arona", "아로나", "아로나", "Shittim", "메인 OS", ""),
+    ("plana", "프라나", "프라나", "Shittim", "서브 OS", ""),
 ]
 
 # 신규 학생의 게임 내 캐릭터 Id (SchaleDB 이미지 주소용). 게임 데이터 CharacterExcelTable 기준.
@@ -94,6 +97,7 @@ NEW_ART = {
 NPC_ART = {sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_{name}.png" for sid, name in {
     "rin": "rin", "momoka": "momoka", "ayumu": "np0013", "aoi": "np0032", "kaya": "np0015", "haine": "np0033",
     "kaguya": "np0242", "sora": "sora", "ayame": "np0206", "kiki": "np0216", "natsuki": "np0182",
+    "arona": "arona", "plana": "np0035",
 }.items()}
 # 적 유닛·이벤트용 학생 초상(Student_Portrait)이 있는 NPC는 그쪽을 쓴다 (플레이어블 아이콘과 같은 화풍).
 NPC_ART.update({sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_{code}.png" for sid, code in {
