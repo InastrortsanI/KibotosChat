@@ -369,7 +369,9 @@ function halo(st, size = "") {
 const ART_URL = "https://schaledb.com/images/student/icon/";
 // 총학생회 같은 NPC는 art_url(다른 공개 CDN의 초상)을 쓴다.
 const artImg = (st) => (IN_CLAUDE || !(st.art || st.art_url)) ? ""
-  : `<img class="face" src="${st.art_url || ART_URL + st.art + ".webp"}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`;
+  : `<img class="face" src="${st.art_url || ART_URL + st.art + ".webp"}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+      data-fb="${st.art_url && st.art ? ART_URL + st.art + ".webp" : ""}" onerror="if (this.dataset.fb) { this.src = this.dataset.fb; this.dataset.fb = ''; } else this.remove()">`;
+// ↑ 기본 의상 초상(art_url)을 못 불러오면 SchaleDB 아이콘(art)으로, 그것도 안 되면 이미지를 지워 이니셜을 보인다.
 // AI가 대사 이름을 한국어 대신 id나 영어(Hikari, Tachibana Hikari)로 쓸 때도 학생을 찾는다.
 function findStudentByName(name) {
   const n = name.trim();

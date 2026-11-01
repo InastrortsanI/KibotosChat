@@ -99,6 +99,10 @@ NPC_ART = {sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_
 NPC_ART.update({sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_{code}.png" for sid, code in {
     "yukino": "ch0171", "arata": "ch0236", "suou": "ch0244", "akemi": "ch0265", "kokuriko": "ch0226",
 }.items()})
+# 글로벌 데이터에 기본 의상 없이 이격만 있는 학생(키사키=수영복, 리오=특수 슈트)은 기본 의상 초상으로 덮어쓴다.
+BASE_ART = {sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_{code}.png" for sid, code in {
+    "kisaki": "ch0139", "rio": "ch0158",
+}.items()}
 
 # SchaleDB 이후 공개된 이격(뉴스 보도로 확인한 것만)
 EXTRA_OUTFITS = {
@@ -170,7 +174,7 @@ def main(db_path: str) -> None:
     for sid, name, full, school, club, birthday in NEW_STUDENTS:
         if sid in known:
             continue
-        entry = {"id": sid, "art": NEW_ART.get(sid), "art_url": NPC_ART.get(sid), "name": name, "full_name": full, "school": school, "club": club,
+        entry = {"id": sid, "art": NEW_ART.get(sid), "art_url": NPC_ART.get(sid) or BASE_ART.get(sid), "name": name, "full_name": full, "school": school, "club": club,
                  "birthday": birthday, "outfits": EXTRA_OUTFITS.get(sid, [])}
         roster.append(apply_persona(entry, personas.get(sid)))
 
