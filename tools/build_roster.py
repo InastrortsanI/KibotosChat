@@ -65,9 +65,10 @@ NEW_STUDENTS = [
     # 총학생회 임원 (플레이어블이 아닌 NPC. 생일 등 미공개 정보는 비워 둔다)
     ("rin", "린", "나나가미 린", "GSC", "수석행정관", ""),
     ("momoka", "모모카", "유라기 모모카", "GSC", "교통실", ""),
-    ("ayumu", "아유무", "이와비츠 아유무", "GSC", "린의 비서", ""),
+    ("ayumu", "아유무", "이와비츠 아유무", "GSC", "조정실", ""),
     ("aoi", "아오이", "오키 아오이", "GSC", "재무실장", ""),
     ("kaya", "카야", "시라누이 카야", "GSC", "방위실장", ""),
+    ("haine", "하이네", "하이네", "GSC", "체육실장", ""),
 ]
 
 # 신규 학생의 게임 내 캐릭터 Id (SchaleDB 이미지 주소용). 게임 데이터 CharacterExcelTable 기준.
@@ -78,6 +79,10 @@ NEW_ART = {
     "miyo": 10127, "fuyu": 10128, "rena": 10138, "chiaki": 10107, "seia": 10110, "kurumi": 10140,
     "eri": 10125, "kanoe": 10126, "nagusa": 10119, "kei": 10135,
 }
+# 총학생회 NPC 초상 (SchaleDB에 없음). 게임 데이터의 NPC_Portrait 이름 기준, BA-L10N-Viewer 공개 CDN.
+NPC_ART = {sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_{name}.png" for sid, name in {
+    "rin": "rin", "momoka": "momoka", "ayumu": "np0013", "aoi": "np0032", "kaya": "np0015", "haine": "np0033",
+}.items()}
 
 # SchaleDB 이후 공개된 이격(뉴스 보도로 확인한 것만)
 EXTRA_OUTFITS = {
@@ -149,7 +154,7 @@ def main(db_path: str) -> None:
     for sid, name, full, school, club, birthday in NEW_STUDENTS:
         if sid in known:
             continue
-        entry = {"id": sid, "art": NEW_ART.get(sid), "name": name, "full_name": full, "school": school, "club": club,
+        entry = {"id": sid, "art": NEW_ART.get(sid), "art_url": NPC_ART.get(sid), "name": name, "full_name": full, "school": school, "club": club,
                  "birthday": birthday, "outfits": EXTRA_OUTFITS.get(sid, [])}
         roster.append(apply_persona(entry, personas.get(sid)))
 

@@ -367,8 +367,9 @@ function halo(st, size = "") {
 // 학생 얼굴: SchaleDB의 공식 아이콘을 링크로만 불러온다(저장소에는 이미지 파일이 없음).
 // claude.ai 페이지는 외부 이미지를 막으므로 넣지 않고, 불러오기에 실패하면 이미지를 지워 이니셜이 보이게 한다.
 const ART_URL = "https://schaledb.com/images/student/icon/";
-const artImg = (st) => (IN_CLAUDE || !st.art) ? ""
-  : `<img class="face" src="${ART_URL}${st.art}.webp" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`;
+// 총학생회 같은 NPC는 art_url(다른 공개 CDN의 초상)을 쓴다.
+const artImg = (st) => (IN_CLAUDE || !(st.art || st.art_url)) ? ""
+  : `<img class="face" src="${st.art_url || ART_URL + st.art + ".webp"}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`;
 // AI가 대사 이름을 한국어 대신 id나 영어(Hikari, Tachibana Hikari)로 쓸 때도 학생을 찾는다.
 function findStudentByName(name) {
   const n = name.trim();
