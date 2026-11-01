@@ -507,19 +507,34 @@ function currentScene(room) {
   return room.scene0 || null;
 }
 
-// 상세 프로필을 넣을 학생: 방의 고정 학생 + 지금 장면에 있는 학생 + 최근 대화에 이름이 나온 학생
+// 응답 속 '이름 [감정]: "대사"' 줄에서 실제로 말한 학생 id를 뽑는다 (최근에 말한 순서).
+function speakersIn(messages) {
+  const ids = [];
+  for (const m of [...messages].reverse()) {
+    if (m.role !== "assistant") continue;
+    for (const line of m.content.split("\n").reverse()) {
+      const head = line.match(/^\s*([^:："*]{1,40}?)\s*[:：]\s*["“]/);
+      const st = head && findStudentByName(splitSpeaker(head[1]).who);
+      if (st && !ids.includes(st.id)) ids.push(st.id);
+    }
+  }
+  return ids;
+}
+// 상세 프로필을 넣을 학생. 우선순위: 지금 장면에 있는 학생 → 최근 6개 응답에서 실제로 말한 학생 → 방의 고정 학생 → 최근 대화에 이름만 나온 학생.
+// (예전에는 장면 태그와 '최근 2개 메시지'만 봐서, AI가 태그를 빠뜨리면 말하고 있는 학생의 프로필이 빠져 성격이 뒤바뀌었다)
 function focusStudents(room) {
-  const ids = [...room.student_list, ...(currentScene(room)?.present || [])];
+  const ids = [...(currentScene(room)?.present || []), ...speakersIn(room.messages.slice(-6)), ...room.student_list];
   const recent = room.messages.slice(-2).map((m) => m.content).join("\n");
-  for (const s of Object.values(state.students)) if (recent.includes(s.name) && s.name.length >= 2) ids.push(s.id);
-  return [...new Set(ids)].filter((i) => state.students[i]).slice(0, 8).map((i) => state.students[i]);
+  for (const s of Object.values(state.students)) if (s.name.length >= 2 && recent.includes(s.name)) ids.push(s.id);
+  return [...new Set(ids)].filter((i) => state.students[i]).slice(0, 10).map((i) => state.students[i]);
 }
 
 // 자유 모드용 전체 학생 요약 명부 (id|이름|학교|소속|말투 앞부분)
 function rosterDigest() {
   return Object.values(state.students).map((s) => {
-    const speech = (s.speech || "").split(/[.。]/)[0].slice(0, 40);
-    return `${s.id}|${s.name}|${schoolOf(s).name}|${s.club || "무소속"}|선생님에게 ${s.honorific || "존댓말"}|호칭 '${s.call || "선생님"}'${speech ? "|" + speech : ""}`;
+    const speech = (s.speech || "").split(/[.。]/)[0].slice(0, 50);
+    const trait = (s.personality || "").split(/[.。]/).slice(1, 2).join("").trim().slice(0, 45); // 첫 문장(소속 소개) 다음 문장 = 성격 핵심
+    return `${s.id}|${s.name}|${schoolOf(s).name}|${s.club || "무소속"}|선생님에게 ${s.honorific || "존댓말"}|호칭 '${s.call || "선생님"}'|${speech}${trait ? "|" + trait : ""}`;
   }).join("\n");
 }
 
@@ -540,7 +555,7 @@ function buildSystem(room) {
 - 선생님이 다른 곳으로 가면 그곳에 맞는 학생으로 자연스럽게 바뀌고, 떠난 학생은 [장면]의 등장 목록에서 빠집니다.
 시작 장소: ${place?.name || room.place_name || "샬레 집무실"} — ${place?.desc || ""}
 
-[학생 명부] (형식: id|이름|학교|소속|선생님에게 쓰는 높임|말투)
+[학생 명부] (형식: id|이름|학교|소속|선생님에게 쓰는 높임|호칭|말투|성격)
 ${rosterDigest()}`);
   } else if (room.mode === "story") {
     const sc = state.scenarios.find((x) => x.id === room.scenario_id) || {};
@@ -581,7 +596,18 @@ function buildTurns(room) {
     turns.push({ role: "user", content: "(선생님이 막 이곳에 도착했다. 장면을 시작해 주세요.)" });
   else if (turns.at(-1).role === "assistant")
     turns.push({ role: "user", content: "(선생님은 잠시 말없이 지켜본다. 새 사건을 만들지 말고, 지금 장면 안에서 인물들의 반응을 자연스럽게 이어 주세요.)" });
+  const memo = castReminder(room);
+  if (memo) turns.at(-1).content += "\n\n" + memo;
   return turns;
+}
+// 대화가 길어지면 AI는 맨 앞 프로필보다 바로 앞의 자기 답장을 따라 하며 성격이 조금씩 흘러간다.
+// 그래서 매 턴 마지막 메시지 끝에, 지금 장면 인물의 핵심 설정을 짧게 다시 붙인다(화면에는 보이지 않음).
+function castReminder(room) {
+  const studs = focusStudents(room).slice(0, 6);
+  if (!studs.length) return "";
+  const first = (txt, n) => (txt || "").split(/[.。]/)[0].trim().slice(0, n);
+  const line = (s) => `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. ${first(s.speech, 70)}.${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}`;
+  return `(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 직전 답장과 달라도 아래와 프로필이 기준입니다)\n${studs.map(line).join("\n")}`;
 }
 
 // ───────── 호감도·기억 (Python app/memory.py 를 옮긴 것) ─────────
@@ -627,6 +653,7 @@ async function maybeSummarize(room) {
   const prompt = `당신은 롤플레이 기록을 정리하는 서기입니다. 등장 학생: ${names}
 아래 대화를 읽고 JSON 하나만 출력하세요.
 {"room_summary": "기존 요약과 새 대화를 합친 줄거리 요약. 사건 순서, 약속, 현재 상황 위주로 8문장 이내", "student_memories": {"학생id": "이 학생이 다음 만남에도 기억할 만한 선생님과의 핵심 사실 (2문장 이내)"}}
+주의: 요약과 기억에는 '일어난 사실'만 적고, 학생의 성격·말투·태도를 새로 규정하지 마세요(예: '케이는 아리스에게 차갑다' 같은 문장 금지). 성격은 프로필이 기준입니다.
 기존 요약: ${room.summary || "(없음)"}
 학생별 기존 기억:
 ${mems}

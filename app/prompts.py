@@ -156,4 +156,20 @@ def build_summary_prompt(room: ChatRoom) -> str:
   "room_summary": "기존 요약과 새 대화를 합친 줄거리 요약. 사건 순서, 약속, 현재 상황 위주로 8문장 이내",
   "student_memories": {{"학생id": "이 학생이 다음 만남에도 기억할 만한 선생님과의 핵심 사실 (2문장 이내)"}}
 }}
+주의: 요약과 기억에는 '일어난 사실'만 적고, 학생의 성격·말투·태도를 새로 규정하지 마세요. 성격은 프로필이 기준입니다.
 기존 요약: {room.summary or "(없음)"}"""
+
+
+def build_cast_reminder(room: ChatRoom) -> str:
+    """매 턴 마지막 메시지 끝에 붙이는 인물 설정 메모. 긴 대화에서 성격이 흘러가는 것을 막는다."""
+    lines = []
+    for sid in room.student_list[:6]:
+        s = lore.student(sid)
+        if not s:
+            continue
+        speech = (s.get("speech") or "").split(".")[0][:70]
+        rel = (s.get("relations") or "").split(".")[0][:50]
+        lines.append(f"- {s['name']}: 선생님에게 {s.get('honorific', '존댓말').split(' (')[0]}, 호칭 '{s.get('call', '선생님').split(' (')[0]}'. {speech}." + (f" 관계: {rel}." if rel else ""))
+    if not lines:
+        return ""
+    return "(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 직전 답장과 달라도 아래와 프로필이 기준입니다)\n" + "\n".join(lines)

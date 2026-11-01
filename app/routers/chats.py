@@ -8,7 +8,7 @@ from ..db import get_db
 from ..llm import LLMError, Turn, get_provider
 from ..memory import apply_affection, get_bonds, history_turns, maybe_summarize, split_affection
 from ..models import ChatRoom, Message, User, now
-from ..prompts import build_system_prompt
+from ..prompts import build_cast_reminder, build_system_prompt
 from ..schemas import MessageOut, RoomCreate, RoomDetail, RoomOut, SendIn, TurnOut
 from ..security import current_user
 from .catalog import to_bond_out
@@ -79,6 +79,9 @@ async def _generate(db: Session, user: User, room: ChatRoom, provider_key: str |
     if not turns or turns[-1].role == "assistant":
         # 유저 입력 없이 '이어서 진행'할 때: 모델이 다음 장면을 쓰도록 짧은 지시를 덧붙인다.
         turns.append(Turn("user", "(선생님은 잠시 지켜본다. 장면을 자연스럽게 이어 주세요.)"))
+    memo = build_cast_reminder(room)
+    if memo:
+        turns[-1] = Turn(turns[-1].role, turns[-1].content + "\n\n" + memo)
 
     try:
         raw = await provider.generate(build_system_prompt(user, room, bonds), turns)
