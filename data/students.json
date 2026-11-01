@@ -280,7 +280,7 @@
  {
   "id": "akemi",
   "art": null,
-  "art_url": null,
+  "art_url": "https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_ch0265.png",
   "name": "아케미",
   "full_name": "쿠리하마 아케미",
   "school": "Etc",
@@ -980,7 +980,7 @@
  {
   "id": "suou",
   "art": null,
-  "art_url": "https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_np0177.png",
+  "art_url": "https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_ch0244.png",
   "name": "스오우",
   "full_name": "스오우",
   "school": "Highlander",
@@ -1188,7 +1188,7 @@
  {
   "id": "arata",
   "art": null,
-  "art_url": "https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_np0254.png",
+  "art_url": "https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_ch0236.png",
   "name": "아라타",
   "full_name": "시가라키 아라타",
   "school": "Hyakkiyako",
@@ -1434,7 +1434,7 @@
  {
   "id": "kokuriko",
   "art": null,
-  "art_url": null,
+  "art_url": "https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_ch0226.png",
   "name": "코쿠리코",
   "full_name": "코쿠리코",
   "school": "Hyakkiyako",
@@ -2425,7 +2425,7 @@
  {
   "id": "yukino",
   "art": null,
-  "art_url": "https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_np0293.png",
+  "art_url": "https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_ch0171.png",
   "name": "유키노",
   "full_name": "유키노",
   "school": "SRT",

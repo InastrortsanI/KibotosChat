@@ -93,9 +93,12 @@ NEW_ART = {
 # NPC 초상 (SchaleDB에 없음). 게임 데이터의 NPC_Portrait 이름 기준, BA-L10N-Viewer 공개 CDN.
 NPC_ART = {sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_{name}.png" for sid, name in {
     "rin": "rin", "momoka": "momoka", "ayumu": "np0013", "aoi": "np0032", "kaya": "np0015", "haine": "np0033",
-    "yukino": "np0293", "kaguya": "np0242", "sora": "sora", "arata": "np0254", "ayame": "np0206",
-    "suou": "np0177", "kiki": "np0216", "natsuki": "np0182",
+    "kaguya": "np0242", "sora": "sora", "ayame": "np0206", "kiki": "np0216", "natsuki": "np0182",
 }.items()}
+# 적 유닛·이벤트용 학생 초상(Student_Portrait)이 있는 NPC는 그쪽을 쓴다 (플레이어블 아이콘과 같은 화풍).
+NPC_ART.update({sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_{code}.png" for sid, code in {
+    "yukino": "ch0171", "arata": "ch0236", "suou": "ch0244", "akemi": "ch0265", "kokuriko": "ch0226",
+}.items()})
 
 # SchaleDB 이후 공개된 이격(뉴스 보도로 확인한 것만)
 EXTRA_OUTFITS = {
