@@ -173,3 +173,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* 감정 말풍선: 아이콘 오른쪽 위에 작게 뜬다 */
+.face-wrap { position: relative; display: inline-block; }
+.emote { position: absolute; top: -10px; right: -12px; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 11px; background: #fff; border: 1.5px solid #d7e3ef;
+  display: grid; place-items: center; font: 700 .72rem/1 inherit; box-shadow: 0 1px 3px rgba(0,0,0,.18); animation: emote-pop .35s ease-out; white-space: nowrap; }
+@keyframes emote-pop { 0% { transform: scale(0) translateY(6px); } 70% { transform: scale(1.2); } 100% { transform: none; } }

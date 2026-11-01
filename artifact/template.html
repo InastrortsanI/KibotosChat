@@ -86,6 +86,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .halo img.face { width: calc(100% - 8px); height: calc(100% - 8px); object-fit: cover; }
 .halo.bump .ring { animation: glow .9s ease-out; }
 @keyframes glow { 40% { filter: drop-shadow(0 0 7px var(--halo)); } }
+/* 감정 말풍선: 아이콘 오른쪽 위에 작게 뜬다 */
+.face-wrap { position: relative; display: inline-block; }
+.emote { position: absolute; top: -10px; right: -12px; min-width: 24px; height: 24px; padding: 0 4px; border-radius: 12px; background: var(--paper); border: 1.5px solid var(--line);
+  display: grid; place-items: center; font: 700 .8rem/1 var(--body); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.18); animation: emote-pop .35s ease-out; white-space: nowrap; }
+@keyframes emote-pop { 0% { transform: scale(0) translateY(6px); } 70% { transform: scale(1.2); } 100% { transform: none; } }
 
 .scenarios { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .8rem; max-width: 760px; }
 .scenarios button { width: 100%; text-align: left; font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1rem 1.2rem; cursor: pointer; display: grid; gap: .3rem; }
@@ -376,16 +381,24 @@ function findStudentByName(name) {
 // AI 응답을 화면에 보이고 저장하기 전에 다듬는다 (다음 턴에 AI가 잘못된 표기를 따라 하지 않도록).
 // ① '이름: "대사"' 줄의 이름이 영어·id면 한국어 이름으로 ② 대사 속 '선상님'·'센세' 같은 호칭 변형을 그 학생의 공식 호칭으로
 const WRONG_CALL = /선상님|선상|센세|센쎄|선생님아/g;
+// 대사 줄의 감정 → 게임식 감정 말풍선 기호. AI는 '이름 [감정]: "대사"' 형식으로 쓴다.
+const EMOTES = { 기쁨: "♪", 신남: "✨", 놀람: "!", 의문: "?", 당황: "💦", 부끄러움: "///", 화남: "💢", 슬픔: "💧", 침묵: "…", 졸림: "💤", 결의: "🔥" };
+// '히나 [당황]' → { who: '히나', emo: '당황' }  (괄호 종류가 달라도 받아 준다)
+function splitSpeaker(raw) {
+  const m = raw.trim().match(/^(.*?)\s*[\[(（【]\s*([가-힣]{1,5})\s*[\])）】]$/);
+  return m ? { who: m[1].trim(), emo: m[2] } : { who: raw.trim(), emo: "" };
+}
 function koreanizeNames(text) {
   return text.split("\n").map((line) => {
-    const m = line.match(/^\s*([^:："*]{1,32}?)\s*([:：]\s*["“])(.*)$/);
+    const m = line.match(/^\s*([^:："*]{1,40}?)\s*([:：]\s*["“])(.*)$/);
     if (!m) return line.replace(WRONG_CALL, "선생님");
-    const st = findStudentByName(m[1]);
+    const { who, emo } = splitSpeaker(m[1]);
+    const st = findStudentByName(who);
     if (!st) return line.replace(WRONG_CALL, "선생님");
     const call = (st.call || "선생님").split(" (")[0]; // '스승님 (또는 선생님)' → '스승님'
     let said = m[3].replace(WRONG_CALL, call);
     if (call === "선생") said = said.replace(/선생님/g, "선생"); // 호시노·카요코 등은 공식 대사에서 항상 '선생'
-    return st.name + m[2] + said;
+    return st.name + (emo ? ` [${emo}]` : "") + m[2] + said;
   }).join("\n");
 }
 
@@ -441,7 +454,8 @@ const CORE_RULES = `[당신의 역할]
 
 [출력 형식]
 - 지문(행동·표정·배경 묘사)은 한 줄 전체를 *별표*로 감쌉니다.  예) *시로코가 자전거에서 내리며 고개를 갸웃한다.*
-- 대사는 '이름: "대사"' 형식으로 한 줄에 하나씩 씁니다.          예) 시로코: "선생님, 은행… 아니, 산책 갈래?"
+- 대사는 '이름 [감정]: "대사"' 형식으로 한 줄에 하나씩 씁니다.          예) 시로코 [기쁨]: "선생님, 은행… 아니, 산책 갈래?"
+  감정은 그 대사의 표정에 맞게 다음 중 하나만 고릅니다: 기쁨, 신남, 놀람, 의문, 당황, 부끄러움, 화남, 슬픔, 침묵, 졸림, 결의. 평범한 대사면 [감정]을 생략해도 됩니다.
 - 이름은 반드시 명부의 한국어 이름(예: 히카리, 노조미)으로 씁니다. 영어·로마자 이름이나 id는 대사·지문에 절대 쓰지 말고, id는 맨 끝 내부 태그 안에서만 씁니다.
 - 학생이 아닌 인물(불량배, 로봇 시민 등)도 같은 형식을 씁니다.
 - 응답의 맨 끝에는 화면에 보이지 않는 내부 태그 두 종류를 이 순서로 씁니다.
@@ -820,11 +834,13 @@ function renderAssistant(text) {
     const line = raw.trim();
     const narr = line.match(/^\*(.+)\*$/);
     if (narr) return `<p class="narr">${esc(narr[1])}</p>`;
-    const talk = line.match(/^([^:："*]{1,16})[:：]\s*["“](.*?)["”]?$/);
+    const talk = line.match(/^([^:："*]{1,28})[:：]\s*["“](.*?)["”]?$/);
     if (talk) {
-      const st = findStudentByName(talk[1].trim());
-      const face = st ? halo(st) : `<span class="halo"><span class="face" aria-hidden="true">${esc(talk[1][0])}</span></span>`;
-      return `<div class="line">${face}<div class="bubble" ${st ? `style="--school:${schoolOf(st).color}"` : ""}><b>${esc(st ? st.name : talk[1])}</b>${esc(talk[2])}</div></div>`;
+      const { who, emo } = splitSpeaker(talk[1]);
+      const st = findStudentByName(who);
+      const face = st ? halo(st) : `<span class="halo"><span class="face" aria-hidden="true">${esc(who[0] || "?")}</span></span>`;
+      const mark = EMOTES[emo] ? `<span class="emote" role="img" aria-label="${esc(emo)}" title="${esc(emo)}">${EMOTES[emo]}</span>` : "";
+      return `<div class="line"><span class="face-wrap">${face}${mark}</span><div class="bubble" ${st ? `style="--school:${schoolOf(st).color}"` : ""}><b>${esc(st ? st.name : who)}</b>${esc(talk[2])}</div></div>`;
     }
     return `<p class="plain">${esc(line)}</p>`;
   }).join("");

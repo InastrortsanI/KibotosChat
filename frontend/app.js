@@ -71,18 +71,27 @@ function findStudentByName(name) {
   return state.students[k] || state.students[k.replace(/\s+/g, "_")] || state.students[k.split(/\s+/).pop()] || null;
 }
 
+// 대사 줄의 감정 → 게임식 감정 말풍선 기호. AI는 '이름 [감정]: "대사"' 형식으로 쓴다.
+const EMOTES = { 기쁨: "♪", 신남: "✨", 놀람: "!", 의문: "?", 당황: "💦", 부끄러움: "///", 화남: "💢", 슬픔: "💧", 침묵: "…", 졸림: "💤", 결의: "🔥" };
+function splitSpeaker(raw) {
+  const m = raw.trim().match(/^(.*?)\s*[\[(（【]\s*([가-힣]{1,5})\s*[\])）】]$/);
+  return m ? { who: m[1].trim(), emo: m[2] } : { who: raw.trim(), emo: "" };
+}
+
 // AI 응답 한 덩어리를 지문 / 대사 / 일반 문단으로 나눠 그린다.
 function renderAssistant(text) {
   return text.split(/\n+/).filter((l) => l.trim()).map((raw) => {
     const line = raw.trim();
     const narr = line.match(/^\*(.+)\*$/);
     if (narr) return `<p class="narr">${esc(narr[1])}</p>`;
-    const talk = line.match(/^([^:："]{1,16})[:：]\s*["“](.*)["”]$/);
+    const talk = line.match(/^([^:："]{1,28})[:：]\s*["“](.*)["”]$/);
     if (talk) {
-      const st = findStudentByName(talk[1].trim());
-      const face = st ? halo(st) : `<span class="halo"><span class="face" aria-hidden="true">${esc(talk[1][0])}</span></span>`;
+      const { who, emo } = splitSpeaker(talk[1]);
+      const st = findStudentByName(who);
+      const face = st ? halo(st) : `<span class="halo"><span class="face" aria-hidden="true">${esc(who[0] || "?")}</span></span>`;
+      const mark = EMOTES[emo] ? `<span class="emote" role="img" aria-label="${esc(emo)}" title="${esc(emo)}">${EMOTES[emo]}</span>` : "";
       const color = st ? `style="--school:${schoolOf(st).color}"` : "";
-      return `<div class="line">${face}<div class="bubble" ${color}><b>${esc(st ? st.name : talk[1])}</b>${esc(talk[2])}</div></div>`;
+      return `<div class="line"><span class="face-wrap">${face}${mark}</span><div class="bubble" ${color}><b>${esc(st ? st.name : who)}</b>${esc(talk[2])}</div></div>`;
     }
     return `<p class="plain">${esc(line)}</p>`;
   }).join("");
