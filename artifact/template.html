@@ -417,7 +417,7 @@ function stageOf(a) { let s = STAGES[0]; for (const st of STAGES) if (a >= st[0]
 
 const CORE_RULES = `[당신의 역할]
 당신은 게임 「블루 아카이브」의 세계 '키보토스'를 무대로 한 한국어 롤플레이 엔진입니다.
-유저는 연방수사부 '샬레'에 부임한 '선생님'입니다. 당신은 학생들과 주변 세계를 연기합니다.
+유저는 연방수사동아리 '샬레'에 부임한 '선생님'입니다. 당신은 학생들과 주변 세계를 연기합니다.
 
 [반드시 지킬 것]
 1. 유저(선생님)의 대사·행동·생각을 대신 쓰지 마세요. 선생님의 반응은 유저가 정합니다.
@@ -765,7 +765,7 @@ function renderScenarios() {
   $("#scenario-list").querySelectorAll("button").forEach((b) => (b.onclick = () => openStorySheet(b.dataset.id)));
 }
 function openStorySheet(id) {
-  const sc = state.scenarios.find((x) => x.id === id), chosen = new Set(sc.students), all = Object.values(state.students);
+  const sc = state.scenarios.find((x) => x.id === id), chosen = new Set(sc.students), all = Object.values(state.students).filter((s) => s.school !== "Shittim"); // 아로나·프라나는 장면에 등장하지 않으므로 출연진에서 제외
   $("#sheet-body").innerHTML = `<h2>${esc(sc.title)}</h2><p>${esc(sc.summary)}</p>
     <label for="pick-q">함께할 학생 (최대 6명)<input id="pick-q" type="search" placeholder="이름으로 찾아 추가"></label>
     <div id="pick" class="pick"></div>
