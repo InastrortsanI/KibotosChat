@@ -392,7 +392,10 @@ function findStudentByName(name) {
 }
 // AI 응답을 화면에 보이고 저장하기 전에 다듬는다 (다음 턴에 AI가 잘못된 표기를 따라 하지 않도록).
 // ① '이름: "대사"' 줄의 이름이 영어·id면 한국어 이름으로 ② 대사 속 '선상님'·'센세' 같은 호칭 변형을 그 학생의 공식 호칭으로
-const WRONG_CALL = /선상님|선상|센세|센쎄|선생님아/g;
+// 호칭 변형만 정확히 잡는다. 다른 단어 속 글자(연장선상, 선상 파티, 센세이션 등)는 건드리지 않도록
+// 앞에 한글이 붙어 있지 않을 것, 짧은 변형(선상·센세)은 뒤에도 한글이 이어지지 않을 것을 조건으로 둔다.
+const WRONG_CALL = /(?<![가-힣])(?:선상님|센세님|센쎄님|(?:선상|센세|센쎄)(?=\s*[,!?~…"”]|\s*$))/g; // 대사: 짧은 변형은 부르는 말(뒤에 쉼표·느낌표 등)일 때만
+const WRONG_CALL_NARR = /(?<![가-힣])(?:선상님|센세님|센쎄님)/g; // 지문: '선상 파티'처럼 보통 단어일 수 있어 '~님'이 붙은 경우만
 // 대사 줄의 감정 → 게임식 감정 말풍선 기호. AI는 '이름 [감정]: "대사"' 형식으로 쓴다.
 const EMOTES = { 기쁨: "♪", 신남: "✨", 놀람: "!", 의문: "?", 당황: "💦", 부끄러움: "///", 화남: "💢", 슬픔: "💧", 침묵: "…", 졸림: "💤", 결의: "🔥" };
 // '히나 [당황]' → { who: '히나', emo: '당황' }  (괄호 종류가 달라도 받아 준다)
@@ -410,10 +413,10 @@ function politeYou(said, call) {
 function koreanizeNames(text) {
   return text.split("\n").map((line) => {
     const m = line.match(/^\s*([^:："*]{1,40}?)\s*([:：]\s*["“])(.*)$/);
-    if (!m) return line.replace(WRONG_CALL, "선생님");
+    if (!m) return line.replace(WRONG_CALL_NARR, "선생님");
     const { who, emo } = splitSpeaker(m[1]);
     const st = findStudentByName(who);
-    if (!st) return line.replace(WRONG_CALL, "선생님");
+    if (!st) return line.replace(WRONG_CALL_NARR, "선생님");
     const call = (st.call || "선생님").split(" (")[0]; // '스승님 (또는 선생님)' → '스승님'
     let said = m[3].replace(WRONG_CALL, call);
     if (call === "선생") said = said.replace(/선생님/g, "선생"); // 호시노·카요코 등은 공식 대사에서 항상 '선생'
