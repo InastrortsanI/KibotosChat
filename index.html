@@ -71,6 +71,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .topbar { display: none; align-items: center; gap: .5rem; padding: .6rem 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
 .topbar .brand { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .only-mobile { display: none; }
+.cover-only { display: none; }
 
 .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.2rem; }
 .chip { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: .35rem .9rem; font: inherit; font-size: .9rem; cursor: pointer; color: var(--ink); }
@@ -181,6 +182,61 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
   .chat-title h1 { display: none; }
   .chat-head select { max-width: 92px; }
 }
+/* 작고 정사각형에 가까운 화면 (갤럭시 Z 플립 커버 화면 4.1" ≈ 360×400 CSS px).
+   카메라가 화면 왼쪽 아래에 있으므로, 입력창 버튼은 오른쪽 아래로 모으고 왼쪽 아래는 비워 둔다. */
+@media (max-width: 560px) and (max-height: 560px) {
+  body { font-size: 15px; line-height: 1.55; }
+  .topbar { padding: .3rem 10px; gap: .3rem; }
+  .topbar .brand { font-size: 1.05rem; }
+  .icon-btn { padding: .2rem .4rem; }
+  .view { padding-block: .7rem; padding-inline: 12px; }
+  h1 { font-size: 1.3rem; }
+  .view-head { margin-bottom: .5rem; gap: .5rem; }
+  .chips { margin-bottom: .6rem; gap: .3rem; }
+  .chip { padding: .25rem .65rem; font-size: .82rem; }
+  .roster { gap: .35rem; }
+  .roster button { padding: .45rem .6rem; gap: .6rem; }
+  .who strong { font-size: 1.02rem; }
+  .who span { font-size: .78rem; }
+  .halo { --size: 38px; }
+  .scenarios button { padding: .7rem .85rem; }
+  .scenarios h2 { font-size: 1.1rem; }
+
+  .chat-head { display: none; } /* 세로 공간이 부족해 대화 정보 줄은 숨기고, 삭제 버튼은 위쪽 바로 옮긴다 */
+  .cover-only:not([hidden]) { display: inline-block; margin-left: auto; }
+  .chat-title p { font-size: .76rem; }
+  .chat-head select { max-width: 78px; font-size: .78rem; padding: .25rem .35rem; }
+  .messages { padding: .7rem 10px; gap: .8rem; }
+  .line { gap: .45rem; }
+  .line .halo { --size: 28px; }
+  .bubble { padding: .4rem .7rem; }
+  .bubble b { font-size: .9rem; }
+  .msg.user { padding: .5rem .75rem; max-width: 88%; }
+  .emote { min-width: 20px; height: 20px; font-size: .7rem; top: -8px; right: -9px; }
+  .jump { bottom: 6px; right: 10px; padding: .25rem .7rem; font-size: .78rem; }
+
+  .composer { padding: .35rem 10px max(.45rem, env(safe-area-inset-bottom, 0px)); gap: .35rem; }
+  .composer-row { order: 1; gap: .4rem; }
+  .composer-row textarea { min-height: 2.3em; height: 2.3em; padding: .35rem .55rem; font-size: 15px; }
+  .composer-row .btn.primary { padding: .45rem .75rem; }
+  .composer-tools { order: 2; justify-content: flex-end; flex-wrap: nowrap; gap: .25rem; padding-left: 22%; }
+  .composer-tools .btn { font-size: .74rem; padding: .25rem .45rem; white-space: nowrap; }
+  .format-tools { margin-left: 0; gap: .25rem; }
+  .format-tools .btn { min-width: 2.1rem; }
+  .msg-bar { order: 0; }
+
+  .sheet { width: 100%; max-width: 100%; max-height: 100%; height: 100%; border-radius: 0; }
+  .sheet-inner { padding: .9rem 12px; gap: .7rem; }
+  .sheet-top { gap: .7rem; }
+  .sheet-top h2 { font-size: 1.35rem; }
+  .halo.huge { --size: 64px; }
+  .sheet-actions { position: sticky; bottom: 0; background: var(--paper); padding-top: .4rem; margin-bottom: -.2rem; flex-wrap: nowrap; gap: .35rem; }
+  .sheet-actions .btn { font-size: .8rem; padding: .4rem .6rem; white-space: nowrap; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: .15rem; } /* 학교 필터는 한 줄 가로 스크롤 */
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; }
+  .toast { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: auto; right: 10px; transform: none; max-width: 70%; }
+}
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 
@@ -211,6 +267,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
     <header class="topbar">
       <button class="icon-btn" id="open-sidebar" aria-label="메뉴 열기">☰</button>
       <span class="brand small" id="topbar-title">키보토스 채팅</span>
+      <button class="icon-btn cover-only" id="cover-delete" aria-label="대화 삭제" title="대화 삭제" hidden>🗑</button>
     </header>
 
     <section id="view-roster" class="view">
@@ -726,7 +783,7 @@ function showView(name) {
   for (const v of ["free", "roster", "stories", "world", "chat"]) $(`#view-${v}`).hidden = v !== name;
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === name));
   $("#sidebar").classList.remove("open");
-  if (name !== "chat") { state.ctl?.abort(); state.room = null; $("#topbar-title").textContent = "키보토스 채팅"; renderRooms(); }
+  if (name !== "chat") { state.ctl?.abort(); state.room = null; $("#topbar-title").textContent = "키보토스 채팅"; $("#cover-delete").hidden = true; renderRooms(); }
 }
 document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => showView(t.dataset.view)));
 $("#open-sidebar").onclick = () => $("#sidebar").classList.add("open");
@@ -748,7 +805,14 @@ function renderRoster() {
     : `<li class="empty">조건에 맞는 학생이 없습니다. 검색어나 학교 필터를 바꿔 보세요.</li>`;
   $("#roster").querySelectorAll("button").forEach((b) => (b.onclick = () => openStudentSheet(b.dataset.id)));
 }
+// 시트(팝업)는 항상 맨 위부터 보이게 연다 (작은 화면에서 아래쪽 버튼에 포커스가 가며 끝까지 내려가 있던 문제)
+function openSheet() { const d = $("#sheet"); d.showModal(); d.scrollTop = 0; $("#sheet-body").scrollTop = 0; }
 $("#search").oninput = renderRoster;
+$("#cover-delete").onclick = () => $("#delete-room").click();
+// 커버 화면처럼 작은 화면에서는 입력창 안내문을 짧게
+const COVER = matchMedia("(max-width: 560px) and (max-height: 560px)");
+const setPlaceholder = () => { $("#input").placeholder = COVER.matches ? "대사 또는 *행동*" : "대사를 쓰거나 *행동*을 별표로 감싸 쓰세요"; };
+COVER.addEventListener?.("change", setPlaceholder); setPlaceholder();
 
 function openStudentSheet(id) {
   const s = state.students[id], b = state.bonds[id];
@@ -776,7 +840,7 @@ function openStudentSheet(id) {
     const f = new FormData($("#sheet-body")); $("#sheet").close();
     createRoom({ mode: "single", student_ids: [id], outfit: f.get("outfit") || "", situation: (f.get("situation") || "").trim() });
   };
-  $("#sheet").showModal();
+  openSheet();
 }
 
 // ───────── 스토리 ─────────
@@ -812,7 +876,7 @@ function openStorySheet(id) {
     $("#sheet").close();
     createRoom({ mode: "story", student_ids: [...chosen], scenario_id: sc.id, situation });
   };
-  $("#sheet").showModal();
+  openSheet();
 }
 
 // ───────── 자유 모드 ─────────
@@ -833,7 +897,7 @@ function openPlaceSheet(id) {
     $("#sheet").close();
     createRoom({ mode: "free", place_id: id, situation });
   };
-  $("#sheet").showModal();
+  openSheet();
 }
 // 학생 상세에서 '자유 모드로 만나러 가기': 그 학생의 학원 장소에서 시작 (해당 장소가 없으면 샬레)
 function meetInFree(sid) {
@@ -863,7 +927,7 @@ $("#open-settings").onclick = () => {
     $("#sheet").close(); renderMe();
     await store.set("profile", state.profile); toast("이름을 저장했습니다.");
   };
-  $("#sheet").showModal();
+  openSheet();
 };
 
 // ───────── 대화방 목록 ─────────
@@ -937,6 +1001,7 @@ function renderChatHead() {
   $("#chat-halos").innerHTML = studs.slice(0, 4).map((s) => halo(s, "big")).join("");
   $("#chat-title").textContent = room.title;
   $("#topbar-title").textContent = room.title;
+  $("#cover-delete").hidden = false;
   let sub;
   if (room.mode === "single" && studs[0]) sub = `${stageOf(bondOf(studs[0].id).affection).name} · 호감도 ${bondOf(studs[0].id).affection}`;
   else sub = [scene?.place, scene?.time].filter(Boolean).join(" · ") + (studs.length ? ` — ${studs.map((s) => `${s.name} ${bondOf(s.id).affection}`).join(", ")}` : "");
@@ -1170,7 +1235,7 @@ $("#delete-room").onclick = () => {
     await store.set("roomindex", { rooms: state.rooms });
     toast("대화를 삭제했습니다.");
   };
-  $("#sheet").showModal();
+  openSheet();
 };
 
 // ───────── 직접 AI 호출 (claude.ai 밖, 예: GitHub Pages) ─────────
@@ -1233,7 +1298,7 @@ function openAiSheet() {
     aiConfig = { provider: aiConfig.provider, key: "", model: "" };
     saveAiConfig(); initDirectAI(); $("#sheet").close(); toast("API 키를 지웠습니다.");
   };
-  $("#sheet").showModal();
+  openSheet();
 }
 $("#open-ai").onclick = openAiSheet;
 
