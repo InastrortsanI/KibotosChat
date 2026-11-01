@@ -64,7 +64,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .topbar { display: none; align-items: center; gap: .5rem; padding: .6rem 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
 .topbar .brand { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .only-mobile { display: none; }
-.cover-only { display: none; }
+.cover-only, .cover-select { display: none; }
 
 .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.2rem; }
 .chip { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: .35rem .9rem; font: inherit; font-size: .9rem; cursor: pointer; color: var(--ink); }
@@ -225,9 +225,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
   .halo.huge { --size: 64px; }
   .sheet-actions { position: sticky; bottom: 0; background: var(--paper); padding-top: .4rem; margin-bottom: -.2rem; flex-wrap: nowrap; gap: .35rem; }
   .sheet-actions .btn { font-size: .8rem; padding: .4rem .6rem; white-space: nowrap; }
-  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: .15rem; } /* 학교 필터는 한 줄 가로 스크롤 */
-  .chips::-webkit-scrollbar { display: none; }
-  .chip { flex: none; }
+  #school-filter { display: none; } /* 학교 필터는 드롭다운으로 (좌우 스와이프는 커버 화면 시스템 제스처와 겹친다) */
+  .cover-select { display: block; width: 100%; margin-bottom: .6rem; padding: .4rem .55rem; font-size: .9rem; }
   .toast { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: auto; right: 10px; transform: none; max-width: 70%; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -267,6 +266,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
         <input id="search" type="search" placeholder="이름, 학교, 동아리로 찾기" aria-label="학생 검색">
       </div>
       <div id="school-filter" class="chips" role="group" aria-label="학교 필터"></div>
+      <select id="school-select" class="cover-select" aria-label="학교 필터"></select>
       <ul id="roster" class="roster"></ul>
     </section>
 
@@ -785,6 +785,10 @@ function renderFilters() {
   $("#school-filter").innerHTML = [["", { name: "전체" }], ...Object.entries(state.schools)]
     .map(([k, s]) => `<button class="chip" data-school="${k}" aria-pressed="${state.schoolFilter === k}">${esc(s.name)}</button>`).join("");
   $("#school-filter").querySelectorAll(".chip").forEach((c) => (c.onclick = () => { state.schoolFilter = c.dataset.school; renderFilters(); renderRoster(); }));
+  // 커버 화면용 드롭다운 (커버 화면은 좌우 스와이프를 시스템이 가져가서 가로 스크롤 칩을 넘길 수 없다)
+  $("#school-select").innerHTML = [["", { name: "전체 학교" }], ...Object.entries(state.schools)]
+    .map(([k, s]) => `<option value="${k}" ${state.schoolFilter === k ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+  $("#school-select").onchange = (e) => { state.schoolFilter = e.target.value; renderFilters(); renderRoster(); };
 }
 function renderRoster() {
   const q = $("#search").value.trim().toLowerCase();
