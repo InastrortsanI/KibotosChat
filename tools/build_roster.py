@@ -69,6 +69,17 @@ NEW_STUDENTS = [
     ("aoi", "아오이", "오키 아오이", "GSC", "재무실장", ""),
     ("kaya", "카야", "시라누이 카야", "GSC", "방위실장", ""),
     ("haine", "하이네", "하이네", "GSC", "체육실장", ""),
+    # 이름 있는 NPC 학생 (게임 스토리 등장인물. 생일 등 미공개 정보는 비워 둔다)
+    ("yukino", "유키노", "유키노", "SRT", "FOX 소대", ""),
+    ("kaguya", "카구야", "우루시바라 카구야", "Shanhaijing", "경극부", ""),
+    ("sora", "소라", "소라", "Etc", "엔젤 24 점원", ""),
+    ("arata", "아라타", "시가라키 아라타", "Hyakkiyako", "길거리 망량즈", ""),
+    ("ayame", "아야메", "아야메", "Hyakkiyako", "백화요란 분쟁조정위원회 (선대 부장)", ""),
+    ("suou", "스오우", "스오우", "Highlander", "감리실", ""),
+    ("akemi", "아케미", "쿠리하마 아케미", "Etc", "불량배", ""),
+    ("kokuriko", "코쿠리코", "코쿠리코", "Hyakkiyako", "화조풍월부", ""),
+    ("kiki", "키키", "키키", "Shanhaijing", "매화원 원생", ""),
+    ("natsuki", "나츠키", "아사쿠사 나츠키", "Hyakkiyako", "인력거부", ""),
 ]
 
 # 신규 학생의 게임 내 캐릭터 Id (SchaleDB 이미지 주소용). 게임 데이터 CharacterExcelTable 기준.
@@ -79,9 +90,11 @@ NEW_ART = {
     "miyo": 10127, "fuyu": 10128, "rena": 10138, "chiaki": 10107, "seia": 10110, "kurumi": 10140,
     "eri": 10125, "kanoe": 10126, "nagusa": 10119, "kei": 10135,
 }
-# 총학생회 NPC 초상 (SchaleDB에 없음). 게임 데이터의 NPC_Portrait 이름 기준, BA-L10N-Viewer 공개 CDN.
+# NPC 초상 (SchaleDB에 없음). 게임 데이터의 NPC_Portrait 이름 기준, BA-L10N-Viewer 공개 CDN.
 NPC_ART = {sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_{name}.png" for sid, name in {
     "rin": "rin", "momoka": "momoka", "ayumu": "np0013", "aoi": "np0032", "kaya": "np0015", "haine": "np0033",
+    "yukino": "np0293", "kaguya": "np0242", "sora": "sora", "arata": "np0254", "ayame": "np0206",
+    "suou": "np0177", "kiki": "np0216", "natsuki": "np0182",
 }.items()}
 
 # SchaleDB 이후 공개된 이격(뉴스 보도로 확인한 것만)
