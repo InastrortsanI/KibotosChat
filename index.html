@@ -400,6 +400,13 @@ function splitSpeaker(raw) {
   const m = raw.trim().match(/^(.*?)\s*[\[(（【]\s*([가-힣]{1,5})\s*[\])）】]$/);
   return m ? { who: m[1].trim(), emo: m[2] } : { who: raw.trim(), emo: "" };
 }
+// 존댓말 학생이 선생님을 '너'라고 부르면 호칭으로 바꾼다. 다른 학생에게 하는 말일 수도 있어서,
+// 같은 대사 안에 선생님 호칭이 함께 있을 때(=선생님에게 하는 말)만 고친다.
+const YOU_FORMS = [["네가", "이"], ["너는", "은"], ["넌", "은"], ["너도", "도"], ["너를", "을"], ["널", "을"], ["너한테", "한테"], ["너에게", "께"], ["너랑", "이랑"], ["너의", "의"], ["너만", "만"]];
+function politeYou(said, call) {
+  for (const [you, josa] of YOU_FORMS) said = said.replace(new RegExp(`(^|[\\s,.!?…~"“(])${you}(?=[\\s,.!?…~"”)]|$)`, "g"), `$1${call}${josa}`);
+  return said;
+}
 function koreanizeNames(text) {
   return text.split("\n").map((line) => {
     const m = line.match(/^\s*([^:："*]{1,40}?)\s*([:：]\s*["“])(.*)$/);
@@ -410,6 +417,7 @@ function koreanizeNames(text) {
     const call = (st.call || "선생님").split(" (")[0]; // '스승님 (또는 선생님)' → '스승님'
     let said = m[3].replace(WRONG_CALL, call);
     if (call === "선생") said = said.replace(/선생님/g, "선생"); // 호시노·카요코 등은 공식 대사에서 항상 '선생'
+    if ((st.honorific || "존댓말").startsWith("존댓말") && said.includes(call)) said = politeYou(said, call);
     return st.name + (emo ? ` [${emo}]` : "") + m[2] + said;
   }).join("\n");
 }
@@ -482,7 +490,7 @@ const CORE_RULES = `[당신의 역할]
 
 // '존댓말'/'반말'만 적으면 AI가 흘려듣기 쉬워서, 어미까지 구체적으로 풀어 쓴다.
 function honorificRule(h = "존댓말") {
-  if (h.startsWith("존댓말")) return "존댓말 — 선생님에게 하는 모든 대사를 '~요', '~습니다' 같은 존댓말로 끝맺는다. 반말을 절대 섞지 않는다. (반드시 지킬 것)";
+  if (h.startsWith("존댓말")) return "존댓말 — 선생님에게 하는 모든 대사를 '~요', '~습니다' 같은 존댓말로 끝맺는다. 반말을 절대 섞지 않고, 선생님을 '너·네가·너도'처럼 부르지 않고 항상 호칭(선생님 등)으로 부른다. (반드시 지킬 것)";
   if (h.startsWith("반말")) return `${h} — 선생님에게 '~야', '~어', '~지' 같은 반말을 쓴다. 갑자기 존댓말로 바꾸지 않는다. (반드시 지킬 것)`;
   return `${h} (반드시 지킬 것)`;
 }
@@ -632,7 +640,7 @@ function castReminder(room) {
   const studs = focusStudents(room).slice(0, 6);
   if (!studs.length) return "";
   const first = (txt, n) => (txt || "").split(/[.。]/)[0].trim().slice(0, n);
-  const line = (s) => `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. ${first(s.speech, 70)}.${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}`;
+  const line = (s) => `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}${(s.honorific || "존댓말").startsWith("존댓말") ? "(선생님을 '너'라고 부르지 않음)" : ""}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. ${first(s.speech, 70)}.${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}`;
   return `(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 앞선 답장의 말투가 달라도(설정이 바뀌기 전 기록일 수 있음) 아래와 프로필이 기준입니다)\n${studs.map(line).join("\n")}`;
 }
 
