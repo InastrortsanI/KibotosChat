@@ -172,4 +172,4 @@ def build_cast_reminder(room: ChatRoom) -> str:
         lines.append(f"- {s['name']}: 선생님에게 {s.get('honorific', '존댓말').split(' (')[0]}, 호칭 '{s.get('call', '선생님').split(' (')[0]}'. {speech}." + (f" 관계: {rel}." if rel else ""))
     if not lines:
         return ""
-    return "(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 직전 답장과 달라도 아래와 프로필이 기준입니다)\n" + "\n".join(lines)
+    return "(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 앞선 답장의 말투가 달라도(설정이 바뀌기 전 기록일 수 있음) 아래와 프로필이 기준입니다)\n" + "\n".join(lines)

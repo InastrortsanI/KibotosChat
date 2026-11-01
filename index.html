@@ -596,9 +596,33 @@ function buildTurns(room) {
     turns.push({ role: "user", content: "(선생님이 막 이곳에 도착했다. 장면을 시작해 주세요.)" });
   else if (turns.at(-1).role === "assistant")
     turns.push({ role: "user", content: "(선생님은 잠시 말없이 지켜본다. 새 사건을 만들지 말고, 지금 장면 안에서 인물들의 반응을 자연스럽게 이어 주세요.)" });
-  const memo = castReminder(room);
+  const memo = [profileChangeNote(room), castReminder(room)].filter(Boolean).join("\n\n");
   if (memo) turns.at(-1).content += "\n\n" + memo;
   return turns;
+}
+
+// ───────── 설정이 바뀐 뒤의 예전 대화방 ─────────
+// 예전 대화방에는 옛 설정으로 쓰인 답장이 수십 개 쌓여 있어서, AI가 새 프로필보다 그 '예시'를 따라 한다.
+// 그래서 방마다 학생 설정의 지문(fingerprint)을 기억해 두고, 바뀐 학생이 있으면 한동안(20턴) 안내를 붙인다.
+const NOTE_TURNS = 20;
+const profileFp = (s) => [s.honorific, s.call, (s.speech || "").slice(0, 60), (s.relations || "").slice(0, 40)].join("|");
+function profileChangeNote(room) {
+  const now = room.messages.length;
+  const studs = focusStudents(room);
+  room.fpNotes = room.fpNotes || {};
+  if (!room.fp) { // 이 기능이 생기기 전에 만든 방: 옛 설정을 알 수 없으므로, 그때까지 말한 적 있는 학생은 '바뀌었을 수 있음'으로 본다
+    room.fp = {};
+    room.fpLegacy = speakersIn(room.messages);
+  }
+  for (const s of studs) {
+    const fp = profileFp(s);
+    if (room.fp[s.id] ? room.fp[s.id] !== fp : (room.fpLegacy || []).includes(s.id)) room.fpNotes[s.id] = now;
+    room.fp[s.id] = fp;
+  }
+  const changed = studs.filter((s) => room.fpNotes[s.id] != null && now - room.fpNotes[s.id] < NOTE_TURNS);
+  if (!changed.length) return "";
+  return `(설정 업데이트 안내 — 선생님의 말이 아님) ${changed.map((s) => s.name).join(", ")}의 설정이 이 대화가 시작된 뒤 바뀌었을 수 있습니다. ` +
+    "앞선 대화와 줄거리 요약에 나온 이 학생들의 말투·호칭·성격·관계는 옛 설정이니 따라 하지 말고, 지금의 [등장 학생 상세 프로필]과 아래 메모대로 연기하세요. 말투가 바뀐 이유를 이야기 속에서 설명하지 말고 자연스럽게 이어 가세요.";
 }
 // 대화가 길어지면 AI는 맨 앞 프로필보다 바로 앞의 자기 답장을 따라 하며 성격이 조금씩 흘러간다.
 // 그래서 매 턴 마지막 메시지 끝에, 지금 장면 인물의 핵심 설정을 짧게 다시 붙인다(화면에는 보이지 않음).
@@ -607,7 +631,7 @@ function castReminder(room) {
   if (!studs.length) return "";
   const first = (txt, n) => (txt || "").split(/[.。]/)[0].trim().slice(0, n);
   const line = (s) => `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. ${first(s.speech, 70)}.${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}`;
-  return `(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 직전 답장과 달라도 아래와 프로필이 기준입니다)\n${studs.map(line).join("\n")}`;
+  return `(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 앞선 답장의 말투가 달라도(설정이 바뀌기 전 기록일 수 있음) 아래와 프로필이 기준입니다)\n${studs.map(line).join("\n")}`;
 }
 
 // ───────── 호감도·기억 (Python app/memory.py 를 옮긴 것) ─────────
