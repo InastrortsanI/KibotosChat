@@ -117,6 +117,12 @@ EXTRA_OUTFITS = {
 
 PLACEHOLDER = "(공개 자료 부족)"
 
+APPEARANCE = ROOT / "tools" / "appearance.json"  # 외모 요약 (직접 작성)
+PEERS = ROOT / "tools" / "peers.json"            # 학생 간 말투 (tools/build_peers.py 가 시나리오에서 집계)
+# 부름말만으로는 누군지 알 수 없는 경우와, 집계에 잡히지 않았지만 대사로 확인한 경우를 손으로 보충한다.
+TITLE_WHO = {("midori", "#언니"): "모모이", ("momoi", "#언니"): None}
+PEER_EXTRA = {"midori": [["kei", "반말", "케이 쨩", 9]]}
+
 
 def load_personas() -> dict:
     merged = {}
@@ -140,9 +146,27 @@ def apply_persona(entry: dict, persona: dict | None) -> dict:
     return entry
 
 
+def peer_text(sid: str, rows: list, names: dict) -> str:
+    """[['aris','반말','아리스 쨩',15], ...] → "반말: 아리스('아리스 쨩'), … / 존댓말: …" """
+    groups: dict[str, list[str]] = {}
+    for tid, reg, form, _n in rows:
+        if tid.startswith("#"):
+            who = TITLE_WHO.get((sid, tid), "")
+            if who is None:
+                continue
+            label = f"'{form}'" + (f"({who})" if who else "이라 부르는 상대")
+        else:
+            label = f"{names.get(tid, tid)}('{form}')"
+        groups.setdefault(reg, []).append(label)
+    order = [("반말", "반말"), ("존댓말", "존댓말"), ("섞음", "반말·존댓말 섞음")]
+    return " / ".join(f"{title}: {', '.join(groups[k])}" for k, title in order if k in groups)
+
+
 def main(db_path: str) -> None:
     raw = json.loads(Path(db_path).read_text(encoding="utf-8"))
     personas = load_personas()
+    looks = json.loads(APPEARANCE.read_text(encoding="utf-8"))
+    peers = json.loads(PEERS.read_text(encoding="utf-8")) if PEERS.exists() else {}
 
     outfits: dict[str, list[str]] = {}
     for s in raw:  # '아루(새해)' → 아루의 의상 목록에 '새해' 추가
@@ -181,6 +205,14 @@ def main(db_path: str) -> None:
         entry = {"id": sid, "art": NEW_ART.get(sid), "art_url": NPC_ART.get(sid) or BASE_ART.get(sid), "name": name, "full_name": full, "school": school, "club": club,
                  "birthday": birthday, "outfits": EXTRA_OUTFITS.get(sid, [])}
         roster.append(apply_persona(entry, personas.get(sid)))
+
+    names = {e["id"]: e["name"] for e in roster}
+    for e in roster:
+        if looks.get(e["id"]):
+            e["appearance"] = looks[e["id"]]
+        rows = peers.get(e["id"], []) + PEER_EXTRA.get(e["id"], [])
+        if rows:
+            e["peers"] = peer_text(e["id"], rows, names)
 
     missing = [e["id"] for e in roster if e["id"] not in personas]
     unused = sorted(set(personas) - {e["id"] for e in roster})

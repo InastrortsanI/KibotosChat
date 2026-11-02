@@ -571,11 +571,16 @@ const CORE_RULES = `[당신의 역할]
 
 [설정: 원작과 다르게 만들지 말 것]
 10. 학생의 말투, 1인칭, 호칭, 성격은 아래 프로필을 그대로 따르고 끝까지 유지하세요. 학생마다 말투가 섞이지 않게 하세요.
-    특히 선생님에게 존댓말을 쓰는지 반말을 쓰는지는 프로필의 '선생님에게' 항목을 반드시 지키세요. 학생끼리는 다르게 말할 수 있습니다.
+    특히 선생님에게 존댓말을 쓰는지 반말을 쓰는지는 프로필의 '선생님에게' 항목을 반드시 지키세요.
+    학생끼리의 말투는 선생님에게 쓰는 말투와 다를 수 있습니다. 프로필의 '다른 학생에게' 항목(게임 대사 기준)이 있으면 그 상대에게는 거기 적힌 높임과 부르는 말을 그대로 쓰세요.
+    (예: 미도리는 선생님에게는 존댓말이지만 언니 모모이·아리스·유즈·케이에게는 '아리스 쨩'처럼 부르며 반말) 항목에 없는 상대는 학년과 관계를 보고 정하되, 선배에게는 '~선배'를 붙입니다.
     프로필이 없는 학생(명부 요약에만 있는 학생)은 선생님에게 존댓말을 씁니다.
     선생님을 부르는 말은 프로필의 '선생님 호칭'을 글자 그대로 씁니다. '선상님', '샘', '센세', '선생님아' 같은 변형은 쓰지 않습니다.
     인터넷 커뮤니티 말투·밈·유행어(ㅋㅋ, ㄹㅇ, ~노, ~누, 개-, 오지다, ~각, ~임 등)와 프로필에 없는 사투리·말버릇은 절대 쓰지 않습니다. 학생들은 게임 속 공식 대사처럼 말합니다.
 11. 프로필·세계관에 없는 과거사, 가족, 능력, 인간관계, 연애 감정을 지어내지 마세요. 모르는 공식 설정은 단정하지 말고 자연스럽게 넘어가세요.
+    외모(머리색·머리 모양·눈 색·동물 귀와 꼬리·뿔·날개·헤일로)는 프로필의 '외모'와 똑같이 묘사하세요. 적혀 있지 않은 신체 특징(없는 동물 귀·날개·뿔 등)을 붙이지 말고, 귀의 종류(여우·늑대·고양이·개·토끼 등)를 바꾸지 마세요.
+    '진짜 귀 아님'으로 적힌 토끼 귀 헤드폰·고양이 귀 헤드셋 등은 장비입니다. '외모 미확인'인 학생과 명부 요약에만 있는 학생은 외모를 구체적으로 묘사하지 마세요.
+    세계관의 수수께끼(총학생회장의 정체, 아로나와 회장의 관계 등)는 [세계관 핵심]에 적힌 만큼만 다루고, 답을 지어내거나 확정하지 마세요.
 12. 학생 이름은 명부에 적힌 표기 그대로 쓰세요. 다른 학원 학생끼리 처음부터 친한 사이로 그리지 마세요(프로필에 관계가 적힌 경우는 예외).
 13. 아로나와 프라나는 싯딤의 상자 안에만 있습니다. 학생들은 둘을 보거나 들을 수 없으므로, 둘에게 말을 걸거나 반응하거나 아는 척하지 않습니다.
     선생님이 태블릿을 보거나 아로나·프라나를 부를 때만 두 사람이 대답하며, 대사 형식은 '아로나: "…"'처럼 같습니다. 그때 곁에 있는 학생에게는 선생님이 태블릿에 혼잣말하는 것으로 보입니다.
@@ -611,7 +616,8 @@ function studentBlock(s) {
     `  · 선생님에게: ${honorificRule(s.honorific)}`,
     `  · 선생님 호칭: '${s.call || "선생님"}' (이 표기 그대로. 선상님·쌤·센세 등으로 바꾸지 말 것)`];
   for (const [label, k] of [["나이", "age"], ["생일", "birthday"], ["키", "height"], ["취미", "hobby"], ["무기", "weapon"],
-    ["성격", "personality"], ["말투", "speech"], ["선생님을 대하는 태도", "sensei"], ["인간관계", "relations"], ["배경·스토리", "story"]])
+    ["외모", "appearance"], ["성격", "personality"], ["말투", "speech"], ["다른 학생에게 (게임 대사 기준)", "peers"],
+    ["선생님을 대하는 태도", "sensei"], ["인간관계", "relations"], ["배경·스토리", "story"]])
     if (s[k]) L.push(`  · ${label}: ${s[k]}`);
   if (s.detail === "basic") L.push("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)");
   const b = bondOf(s.id), st = stageOf(b.affection);
@@ -648,13 +654,22 @@ function focusStudents(room) {
   return [...new Set(ids)].filter((i) => state.students[i]).slice(0, 10).map((i) => state.students[i]);
 }
 
-// 자유 모드용 전체 학생 요약 명부 (id|이름|학교|소속|말투 앞부분)
+// 외모 요약에서 머리(앞 문장)와 귀·뿔·날개·꼬리가 나오는 문장만 골라 짧게 만든다 (명부·매 턴 메모용)
+// 문장 중간에서 자르면 '토끼 귀 헤드폰(진짜 귀 아님)'의 괄호가 잘려 오해가 생기므로 문장 단위로만 뺀다.
+function looksShort(s, n = 90) {
+  const parts = (s.appearance || "").split(/(?<=[.。)])\s+/);
+  const must = parts.filter((p) => /귀|뿔|날개|꼬리/.test(p));
+  const out = [parts[0], ...must]; // 첫 문장(머리 모양·색)은 항상 넣는다
+  if (parts[1] && !out.includes(parts[1]) && [...out, parts[1]].join(" ").length <= n) out.push(parts[1]);
+  return parts.filter((p) => out.includes(p)).join(" "); // 원래 순서대로
+}
+// 자유 모드용 전체 학생 요약 명부 (id|이름|학교|소속|말투 앞부분|외모)
 function rosterDigest() {
   // 아로나·프라나는 장면에 '등장'하는 인물이 아니므로(태블릿 속 OS) 자유 모드 명부에서 뺀다.
   return Object.values(state.students).filter((s) => s.school !== "Shittim").map((s) => {
     const speech = (s.speech || "").split(/[.。]/)[0].slice(0, 50);
     const trait = (s.personality || "").split(/[.。]/).slice(1, 2).join("").trim().slice(0, 45); // 첫 문장(소속 소개) 다음 문장 = 성격 핵심
-    return `${s.id}|${s.name}|${schoolOf(s).name}|${s.club || "무소속"}|선생님에게 ${s.honorific || "존댓말"}|호칭 '${s.call || "선생님"}'|${speech}${trait ? "|" + trait : ""}`;
+    return `${s.id}|${s.name}|${schoolOf(s).name}|${s.club || "무소속"}|선생님에게 ${s.honorific || "존댓말"}|호칭 '${s.call || "선생님"}'|${speech}${trait ? "|" + trait : ""}|외모: ${looksShort(s, 70) || "미확인"}`;
   }).join("\n");
 }
 
@@ -675,7 +690,7 @@ function buildSystem(room) {
 - 선생님이 다른 곳으로 가면 그곳에 맞는 학생으로 자연스럽게 바뀌고, 떠난 학생은 [장면]의 등장 목록에서 빠집니다.
 시작 장소: ${place?.name || room.place_name || "샬레 집무실"} — ${place?.desc || ""}
 
-[학생 명부] (형식: id|이름|학교|소속|선생님에게 쓰는 높임|호칭|말투|성격)
+[학생 명부] (형식: id|이름|학교|소속|선생님에게 쓰는 높임|호칭|말투|성격|외모)
 ${rosterDigest()}`);
   } else if (room.mode === "story") {
     const sc = state.scenarios.find((x) => x.id === room.scenario_id) || {};
@@ -726,7 +741,7 @@ function buildTurns(room) {
 // 예전 대화방에는 옛 설정으로 쓰인 답장이 수십 개 쌓여 있어서, AI가 새 프로필보다 그 '예시'를 따라 한다.
 // 그래서 방마다 학생 설정의 지문(fingerprint)을 기억해 두고, 바뀐 학생이 있으면 한동안(20턴) 안내를 붙인다.
 const NOTE_TURNS = 20;
-const profileFp = (s) => [s.honorific, s.call, (s.speech || "").slice(0, 60), (s.relations || "").slice(0, 40)].join("|");
+const profileFp = (s) => [s.honorific, s.call, (s.speech || "").slice(0, 60), (s.relations || "").slice(0, 40), (s.appearance || "").slice(0, 40), (s.peers || "").slice(0, 40)].join("|");
 function profileChangeNote(room) {
   const now = room.messages.length;
   const studs = focusStudents(room);
@@ -743,7 +758,7 @@ function profileChangeNote(room) {
   const changed = studs.filter((s) => room.fpNotes[s.id] != null && now - room.fpNotes[s.id] < NOTE_TURNS);
   if (!changed.length) return "";
   return `(설정 업데이트 안내 — 선생님의 말이 아님) ${changed.map((s) => s.name).join(", ")}의 설정이 이 대화가 시작된 뒤 바뀌었을 수 있습니다. ` +
-    "앞선 대화와 줄거리 요약에 나온 이 학생들의 말투·호칭·성격·관계는 옛 설정이니 따라 하지 말고, 지금의 [등장 학생 상세 프로필]과 아래 메모대로 연기하세요. 말투가 바뀐 이유를 이야기 속에서 설명하지 말고 자연스럽게 이어 가세요.";
+    "앞선 대화와 줄거리 요약에 나온 이 학생들의 말투·호칭·성격·관계·외모 묘사는 옛 설정이니 따라 하지 말고, 지금의 [등장 학생 상세 프로필]과 아래 메모대로 연기하세요. 말투가 바뀐 이유를 이야기 속에서 설명하지 말고 자연스럽게 이어 가세요.";
 }
 // 대화가 길어지면 AI는 맨 앞 프로필보다 바로 앞의 자기 답장을 따라 하며 성격이 조금씩 흘러간다.
 // 그래서 매 턴 마지막 메시지 끝에, 지금 장면 인물의 핵심 설정을 짧게 다시 붙인다(화면에는 보이지 않음).
@@ -751,7 +766,18 @@ function castReminder(room) {
   const studs = focusStudents(room).slice(0, 6);
   if (!studs.length) return "";
   const first = (txt, n) => (txt || "").split(/[.。]/)[0].trim().slice(0, n);
-  const line = (s) => `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}${(s.honorific || "존댓말").startsWith("존댓말") ? "(선생님을 '너'라고 부르지 않음)" : ""}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. ${first(s.speech, 70)}.${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}`;
+  const names = studs.map((s) => s.name);
+  // 같은 장면에 있는 학생에게 쓰는 말투만 골라 붙인다 (예: 미도리 → 반말: 아리스('아리스 쨩'))
+  const peerLine = (s) => (s.peers || "").split(" / ").map((g) => {
+    const [reg, list] = g.split(": ");
+    const hit = (list || "").split(", ").filter((x) => names.some((n) => n !== s.name && (x.startsWith(n + "(") || x.includes(`(${n})`))));
+    return hit.length ? `${reg}: ${hit.join(", ")}` : "";
+  }).filter(Boolean).join(" / ");
+  const line = (s) => {
+    const p = peerLine(s);
+    return `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}${(s.honorific || "존댓말").startsWith("존댓말") ? "(선생님을 '너'라고 부르지 않음)" : ""}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. ${first(s.speech, 70)}.` +
+      `${p ? " 같은 자리 학생에게 — " + p + "." : ""}${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}${s.appearance ? " 외모: " + looksShort(s) : ""}`;
+  };
   return `(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 앞선 답장의 말투가 달라도(설정이 바뀌기 전 기록일 수 있음) 아래와 프로필이 기준입니다)\n${studs.map(line).join("\n")}`;
 }
 
@@ -877,6 +903,7 @@ function openStudentSheet(id) {
     <div class="sheet-top">${halo(s, "huge")}<div><h2>${esc(s.full_name)}</h2>
       <p class="muted">${b ? `관계: ${esc(stageOf(b.affection).name)} (${b.affection}/100)` : "아직 대화한 적이 없습니다."}</p></div></div>
     ${s.personality ? `<p>${esc(s.personality)}</p>` : ""}
+    ${s.appearance && !s.appearance.startsWith("외모 미확인") ? `<p class="muted">외모: ${esc(s.appearance)}</p>` : ""}
     ${s.detail === "basic" ? `<p class="muted">공개된 자료가 적은 학생입니다. 대화 중 설정이 단순할 수 있습니다.</p>` : ""}
     <dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
     <label for="f-outfit">차림

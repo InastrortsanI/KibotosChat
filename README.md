@@ -79,6 +79,12 @@ docs/           코드 학습 설명서
   ```
   SchaleDB 데이터: https://github.com/lonqie/SchaleDB (data/kr/students.min.json)
 - 성격·말투는 게임 한국어 데이터(학생 소개문·로비 대사)와 대조해 검토했습니다. 원문은 옮기지 않고 요약해 적습니다.
+- 외모(머리색·눈·동물 귀/뿔/날개·헤일로)는 `tools/appearance.json`에 요약해 두었습니다(팬 위키 외모 항목을 참고해 직접 작성). 확인하지 못한 NPC는 `외모 미확인`으로 두어 AI가 지어내지 않게 합니다.
+- 학생끼리 쓰는 말투(예: 미도리는 선생님에게 존댓말, 언니·아리스에게 반말)는 게임 시나리오 대사에서 집계합니다.
+  ```bash
+  python tools/build_peers.py <ba-data DB 폴더>   # → tools/peers.json, 그다음 build_roster.py 실행
+  ```
+  게임 데이터: https://github.com/electricgoat/ba-data (global 브랜치)
 - `h`(선생님에게 쓰는 말투)는 `존댓말`·`반말` 외에 자유 문장도 됩니다. 예) 키사키 `예스러운 하게체`
 - 외부 콜라보 학생(하츠네 미쿠, 미사카 미코토 등)과 일본 서버 전용 학생은 제외했습니다.
 
