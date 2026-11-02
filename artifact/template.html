@@ -5,9 +5,11 @@
 <style>
 /* 레이아웃: 왼쪽 메뉴(모바일은 서랍) + 오른쪽 화면. 하늘색 바탕에 학교 색 헤일로 */
 :root {
-  --bg: #eef5fb; --paper: #ffffff; --ink: #1b2a4a; --ink-soft: #5b6b86; --line: #d7e3ef;
-  --blue: #1a7fd4; --blue-deep: #1466b0; --on-blue: #ffffff; --halo: #f2c230; --halo-track: #e3ebf3;
-  --hover: #f5f9fe; --scrim: rgba(27, 42, 74, .45); --danger: #c93a52; --gold-text: #8a6a00;
+  /* 라이트 모드 = 블루 아카이브 '모모톡' 배색 (분홍 상단바, 남색 학생 말풍선, 파란 선생님 말풍선) */
+  --bg: #f2f7f8; --paper: #ffffff; --ink: #373737; --ink-soft: #66707c; --line: #dde6ed;
+  --blue: #4a8ac8; --blue-deep: #2f6aa3; --on-blue: #ffffff; --halo: #fb90a4; --halo-track: #e7f0f7;
+  --hover: #f2f7f8; --scrim: rgba(55, 55, 55, .45); --danger: #c93a52; --gold-text: #8a6a00;
+  --momo: #fb90a4; --momo-deep: #d9506a; --momo-bubble: #4c5b6f; --momo-head: #e7f0f7;
   --radius-sm: 6px; --radius-lg: 14px;
   --display: "Do Hyeon", "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --body: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
@@ -65,6 +67,17 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .topbar .brand { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .only-mobile { display: none; }
 .cover-only, .cover-select { display: none; }
+.prefs { border: 0; padding: 0; margin: 0; display: grid; gap: .45rem; }
+.prefs legend { font-weight: 700; margin-bottom: .3rem; }
+.segs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: block; text-align: center; padding: .55rem .4rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--paper); cursor: pointer; font-size: .9rem; }
+.seg input:checked + span { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); font-weight: 700; }
+:root[data-theme="light"] .seg input:checked + span { border-color: var(--momo-deep); box-shadow: inset 0 0 0 1px var(--momo-deep); color: var(--momo-deep); }
+.seg input:focus-visible + span { outline: 3px solid var(--blue); outline-offset: 2px; }
+.switch { display: flex !important; align-items: center; gap: .6rem; font-weight: 700; cursor: pointer; }
+.switch input { width: 1.2rem; height: 1.2rem; accent-color: var(--blue); }
+.prefs-links { display: flex; gap: .4rem; flex-wrap: wrap; }
 
 .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.2rem; }
 .chip { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: .35rem .9rem; font: inherit; font-size: .9rem; cursor: pointer; color: var(--ink); }
@@ -175,6 +188,26 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
   .chat-title h1 { display: none; }
   .chat-head select { max-width: 92px; }
 }
+/* ── 라이트(모모톡) 전용 ── */
+:root[data-theme="light"] .topbar { background: var(--momo); border-bottom: 0; }
+:root[data-theme="light"] .topbar .brand, :root[data-theme="light"] .topbar .icon-btn { color: #fff; text-shadow: 0 1px 2px rgba(120, 30, 50, .35); }
+:root[data-theme="light"] .sidebar { background: var(--bg); }
+:root[data-theme="light"] .sidebar-head { background: var(--momo); margin: -1rem -1rem 0; padding: .85rem 1rem; }
+:root[data-theme="light"] .sidebar-head .brand, :root[data-theme="light"] .sidebar-head .icon-btn { color: #fff; text-shadow: 0 1px 2px rgba(120, 30, 50, .35); }
+:root[data-theme="light"] .tab.active { background: var(--paper); color: var(--momo-deep); box-shadow: inset 3px 0 var(--momo); }
+:root[data-theme="light"] .chip[aria-pressed="true"] { background: var(--momo-deep); border-color: var(--momo-deep); color: #fff; }
+:root[data-theme="light"] .btn.primary { background: var(--momo-deep); color: #fff; font-weight: 700; }
+:root[data-theme="light"] .btn.primary:hover { background: #c4405a; }
+:root[data-theme="light"] .scenarios button:hover, :root[data-theme="light"] .btn.ghost:hover { border-color: var(--momo); }
+:root[data-theme="light"] .chat-head { background: var(--momo-head); border-bottom-color: var(--line); }
+:root[data-theme="light"] .view.chat, :root[data-theme="light"] .messages { background: #fff; }
+:root[data-theme="light"] .line .bubble { position: relative; margin-top: 1.35em; background: var(--momo-bubble); color: #fff; border: 0; border-radius: 4px 12px 12px 12px; }
+:root[data-theme="light"] .line .bubble b { position: absolute; top: -1.45em; left: 2px; color: var(--ink); font-size: .9rem; white-space: nowrap; }
+:root[data-theme="light"] .msg.user { background: var(--blue); color: #fff; border-radius: 12px 4px 12px 12px; }
+:root[data-theme="light"] .narr { border-left-color: var(--momo); }
+:root[data-theme="light"] .composer { background: var(--bg); }
+:root[data-theme="light"] .jump { color: var(--momo-deep); }
+
 /* 세로가 짧은 화면(휴대폰 가로 모드 등)에서도 왼쪽 메뉴 전체가 스크롤되게 */
 @media (max-width: 820px) and (max-height: 600px) {
   .sidebar { overflow-y: auto; overscroll-behavior: contain; }
@@ -235,6 +268,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
   .sidebar { overflow-y: auto; overscroll-behavior: contain; gap: .5rem; padding: .7rem 12px max(.7rem, env(safe-area-inset-bottom, 0px)); }
   .sidebar .room-list { flex: none; overflow: visible; }
   .tabs { grid-template-columns: 1fr 1fr; gap: .25rem; }
+  :root[data-theme="light"] .sidebar-head { margin: -.7rem -12px 0; padding: .6rem 12px; }
   .tab { padding: .4rem .55rem; font-size: .9rem; text-align: center; }
   .tab.active { box-shadow: inset 0 -2px var(--blue); }
   .side-title { margin-top: .2rem; font-size: .9rem; }
@@ -262,6 +296,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
     <h2 class="side-title">내 대화</h2>
     <ul id="room-list" class="room-list"><li class="empty">대화 목록을 불러오는 중…</li></ul>
     <div class="sidebar-foot">
+      <div class="row"><span class="muted">테마 · 프로필 사진</span><button class="btn link" id="open-prefs">설정</button></div>
       <div class="row"><span id="me-name" class="muted">선생님</span><button class="btn link" id="open-settings">이름 바꾸기</button></div>
       <div class="row web-only" hidden><span id="ai-status" class="muted">AI 미설정</span><button class="btn link" id="open-ai">AI 설정</button></div>
       <span id="save-note" class="save-note"></span>
@@ -351,6 +386,16 @@ const DATA = /*__DATA__*/null;
 
 // 실행 위치: claude.ai 안이면 window.claude 가 있다. 그 밖(GitHub Pages 등)에서는 방문자의 API 키로 AI를 직접 부른다.
 const IN_CLAUDE = !!window.claude;
+// 화면 설정(테마·프로필 사진)은 보는 사람 각자의 취향이라 이 브라우저에만 저장한다. 저장소를 못 쓰는 환경이면 기본값으로 동작.
+const PREF_KEY = "kivotos-prefs";
+const prefs = { theme: "system", photos: true };
+try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY) || "{}")); } catch { /* 기본값 사용 */ }
+const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch { /* 저장 못 해도 이번 방문엔 적용됨 */ } };
+const DARK_Q = matchMedia("(prefers-color-scheme: dark)");
+// 'system'이면 기기 설정을 따르고, 결과를 html의 data-theme에 적어 CSS가 라이트(모모톡)/다크 중 하나를 고르게 한다.
+function applyTheme() { document.documentElement.dataset.theme = prefs.theme === "system" ? (DARK_Q.matches ? "dark" : "light") : prefs.theme; }
+DARK_Q.addEventListener?.("change", () => { if (prefs.theme === "system") applyTheme(); });
+applyTheme();
 
 const $ = (s) => document.querySelector(s);
 const state = {
@@ -440,7 +485,7 @@ function halo(st, size = "") {
 // claude.ai 페이지는 외부 이미지를 막으므로 넣지 않고, 불러오기에 실패하면 이미지를 지워 이니셜이 보이게 한다.
 const ART_URL = "https://schaledb.com/images/student/icon/";
 // 총학생회 같은 NPC는 art_url(다른 공개 CDN의 초상)을 쓴다.
-const artImg = (st) => (IN_CLAUDE || !(st.art || st.art_url)) ? ""
+const artImg = (st) => (IN_CLAUDE || !prefs.photos || !(st.art || st.art_url)) ? ""
   : `<img class="face" src="${st.art_url || ART_URL + st.art + ".webp"}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
       data-fb="${st.art_url && st.art ? ART_URL + st.art + ".webp" : ""}" onerror="if (this.dataset.fb) { this.src = this.dataset.fb; this.dataset.fb = ''; } else this.remove()">`;
 // ↑ 기본 의상 초상(art_url)을 못 불러오면 SchaleDB 아이콘(art)으로, 그것도 안 되면 이미지를 지워 이니셜을 보인다.
@@ -926,6 +971,24 @@ function renderWorld() {
 
 // ───────── 선생님 이름 ─────────
 function renderMe() { $("#me-name").textContent = state.profile.sensei_name ? `${state.profile.sensei_name} 선생님` : "선생님"; }
+$("#open-prefs").onclick = () => {
+  $("#sidebar").classList.remove("open");
+  const opt = (v, label) => `<label class="seg"><input type="radio" name="theme" value="${v}" ${prefs.theme === v ? "checked" : ""}><span>${label}</span></label>`;
+  $("#sheet-body").innerHTML = `<h2>설정</h2>
+    <fieldset class="prefs"><legend>화면 테마</legend><div class="segs">${opt("system", "기기 설정")}${opt("light", "라이트")}${opt("dark", "다크")}</div><p class="muted" style="margin:0">라이트는 게임 속 모모톡처럼 보입니다.</p></fieldset>
+    <label class="switch"><input type="checkbox" id="pref-photos" ${prefs.photos ? "checked" : ""}> 학생 프로필 사진 보기</label>
+    <p class="muted">끄면 사진 대신 이름 첫 글자로 표시됩니다.${IN_CLAUDE ? " (claude.ai 페이지는 외부 이미지를 불러올 수 없어 항상 첫 글자로 표시됩니다.)" : ""}</p>
+    <div class="prefs-links"><button type="button" class="btn ghost" id="pref-name">선생님 이름 바꾸기</button>${IN_CLAUDE ? "" : '<button type="button" class="btn ghost" id="pref-ai">AI 설정</button>'}</div>
+    <p class="muted">테마와 사진 설정은 이 기기 브라우저에만 저장됩니다.</p>
+    <div class="sheet-actions"><button class="btn primary" value="cancel">닫기</button></div>`;
+  $("#sheet-body").querySelectorAll('input[name="theme"]').forEach((r) => (r.onchange = () => { prefs.theme = r.value; savePrefs(); applyTheme(); }));
+  $("#pref-photos").onchange = (e) => { prefs.photos = e.target.checked; savePrefs(); rerenderFaces(); };
+  $("#pref-name").onclick = () => { $("#sheet").close(); $("#open-settings").click(); };
+  $("#pref-ai")?.addEventListener("click", () => { $("#sheet").close(); openAiSheet(); });
+  openSheet();
+};
+// 프로필 사진 설정이 바뀌면 얼굴이 그려진 곳을 다시 그린다.
+function rerenderFaces() { renderRoster(); if (state.room) { renderChatHead(); renderChat({ keepScroll: true }); } }
 $("#open-settings").onclick = () => {
   $("#sidebar").classList.remove("open");
   $("#sheet-body").innerHTML = `<h2>선생님 이름</h2><p class="muted">학생들이 이야기 속에서 참고하는 이름입니다. 비워 두면 '선생님'으로만 불립니다.</p>
