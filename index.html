@@ -152,6 +152,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 
 .composer { background: var(--paper); border-top: 1px solid var(--line); padding-block: .7rem 1rem; padding-inline: clamp(16px, 3vw, 32px); display: grid; gap: .5rem; }
 .composer-tools { display: flex; gap: .4rem; flex-wrap: wrap; }
+/* 추천 답변: 한 줄로 두고 넘치면 옆으로 밀어서 본다 */
+.suggest { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; padding-bottom: .1rem; }
+.suggest::-webkit-scrollbar { display: none; }
+.suggest .chip { flex: none; max-width: 80%; margin: 0; font-size: .85rem; padding: .3rem .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .composer-tools .btn { font-size: .85rem; padding: .3rem .7rem; }
 .format-tools { display: flex; gap: .4rem; margin-left: auto; }
 .format-tools .btn { min-width: 2.6rem; font-weight: 700; }
@@ -262,6 +266,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
   .format-tools { margin-left: 0; gap: .25rem; }
   .format-tools .btn { min-width: 2.1rem; }
   .msg-bar { order: 0; }
+  .suggest { order: 0; gap: .3rem; }
+  .suggest .chip { font-size: .78rem; padding: .22rem .6rem; }
 
   .sheet { width: 100%; max-width: 100%; max-height: 100%; height: 100%; border-radius: 0; }
   .sheet-inner { padding: .9rem 12px; gap: .7rem; }
@@ -367,6 +373,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
           <button type="button" class="btn ghost" id="msg-cancel">취소</button>
           <button type="button" class="btn danger" id="msg-del">삭제</button>
         </div>
+        <div id="suggest" class="suggest" role="group" aria-label="추천 답변" hidden></div>
         <div class="composer-tools">
           <button type="button" class="btn ghost" id="btn-continue">이어서</button>
           <button type="button" class="btn ghost" id="btn-regen">다시 생성</button>
@@ -397,7 +404,7 @@ const DATA = {"world":{"prompt_summary":"키보토스는 수천 개의 학원이
 const IN_CLAUDE = !!window.claude;
 // 화면 설정(테마·프로필 사진)은 보는 사람 각자의 취향이라 이 브라우저에만 저장한다. 저장소를 못 쓰는 환경이면 기본값으로 동작.
 const PREF_KEY = "kivotos-prefs";
-const prefs = { theme: "system", photos: true };
+const prefs = { theme: "system", photos: true, suggest: true };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY) || "{}")); } catch { /* 기본값 사용 */ }
 const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch { /* 저장 못 해도 이번 방문엔 적용됨 */ } };
 const DARK_Q = matchMedia("(prefers-color-scheme: dark)");
@@ -682,6 +689,16 @@ function rosterDigest() {
   }).join("\n");
 }
 
+// 추천 답변은 설정에서 켰을 때만 요청한다 (끄면 응답이 조금 짧고 빨라진다)
+const SUGGEST_RULE = `[추천 답변]
+응답의 맨 마지막(호감도 태그 다음 줄)에, 선생님이 다음에 할 만한 말이나 행동 보기 3개를 화면에 보이지 않는 태그로 적습니다.
+형식: [추천 답변: 보기1 | 보기2 | 보기3]
+- 유저가 골라 쓰는 보기일 뿐입니다. 이야기 본문에 선생님의 대사·행동을 쓰지 않는다는 1번 규칙은 그대로입니다.
+- 각 보기는 30자 이내. 말은 따옴표 없이 선생님의 말투로, 행동은 *별표*로 감쌉니다. 말과 행동을 섞어도 됩니다.
+- 세 보기는 서로 다른 방향으로(예: 다정하게 받아 주기 / 가볍게 장난치기 / 이야기를 앞으로 진행하기). 지금 장면과 학생의 말에 바로 이어지게 하세요.
+- 미성년자 보호 규칙(2번)을 어기는 보기는 만들지 않습니다.
+예) [추천 답변: 고마워, 덕분에 살았어 | *유우카의 계산기를 슬쩍 가져간다* | 그럼 영수증 정리부터 같이 하자]`;
+
 function buildSystem(room) {
   const studs = focusStudents(room);
   const parts = [CORE_RULES, "[세계관 핵심]\n" + state.world.prompt_summary];
@@ -709,6 +726,7 @@ ${rosterDigest()}`);
     if (studs[0].school === "Shittim") parts.push("[싯딤의 상자] 선생님은 지금 태블릿 '싯딤의 상자'를 보며 그 안의 OS와 대화하고 있습니다. 대화 상대는 화면 속 존재이며, 주변에 학생이 있다면 선생님이 태블릿에 혼잣말하는 것으로 보입니다.");
     if (room.outfit) parts.push(`[현재 차림] ${room.outfit} — ${state.world.outfit_contexts[room.outfit] || ""}`);
   }
+  if (prefs.suggest) parts.push(SUGGEST_RULE);
   if (room.situation) parts.push(`[유저가 정한 상황 설정]\n${room.situation}`);
   if (room.summary) parts.push(`[지금까지의 줄거리 요약]\n${room.summary}`);
   const scene = currentScene(room);
@@ -793,6 +811,7 @@ function castReminder(room) {
 // ───────── 호감도·기억 (Python app/memory.py 를 옮긴 것) ─────────
 const TAG = /\[호감도\s+([\w*]+)\s*:\s*([+-]?\d+)\]/g;
 const SCENE_TAG = /\[장면\s+([^\]]*)\]/g;
+const SUGGEST_TAG = /\[추천(?:\s*답변)?\s*[:：]\s*([^\]]*)\]/g;
 
 // 응답에서 내부 태그를 떼어 내고 {보이는 글, 호감도 변화, 장면}을 돌려준다.
 function parseReply(raw) {
@@ -804,10 +823,14 @@ function parseReply(raw) {
     const present = field("등장").split(/[,，\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => state.students[x]);
     scene = { place: field("장소").slice(0, 60), time: field("시간").slice(0, 30), present: [...new Set(present)].slice(0, 8) };
   }
-  return { text: koreanizeNames(raw.replace(TAG, "").replace(SCENE_TAG, "").trim()), changes, scene };
+  // 추천 답변: '[추천 답변: 보기1 | 보기2 | 보기3]' → ["보기1", "보기2", "보기3"]
+  let suggest = [];
+  for (const [, body] of raw.matchAll(SUGGEST_TAG))
+    suggest = body.split("|").map((x) => koreanizeNames(x.trim().replace(/^["“”]+|["“”]+$/g, ""))).filter((x) => x && x.length <= 60).slice(0, 3);
+  return { text: koreanizeNames(raw.replace(TAG, "").replace(SCENE_TAG, "").replace(SUGGEST_TAG, "").trim()), changes, scene, suggest };
 }
 // 스트리밍 중에는 반쯤 쓰인 태그(끝부분의 '[호감도…', '[장면…')도 숨긴다.
-const visibleText = (t) => koreanizeNames(t.replace(TAG, "").replace(SCENE_TAG, "").replace(/\[(호|장|호감|장면|호감도)?[^\]\n]{0,120}$/, "").trim());
+const visibleText = (t) => koreanizeNames(t.replace(TAG, "").replace(SCENE_TAG, "").replace(SUGGEST_TAG, "").replace(/\[[^\]\n]{0,200}$/, "").trim());
 
 // 명부에 있는 학생이라면 누구든 호감도가 반영된다 (자유 모드에서 새로 만난 학생 포함).
 function applyAffection(room, changes, sign = 1) {
@@ -1014,11 +1037,14 @@ $("#open-prefs").onclick = () => {
     <fieldset class="prefs"><legend>화면 테마</legend><div class="segs">${opt("system", "기기 설정")}${opt("light", "라이트")}${opt("dark", "다크")}</div><p class="muted" style="margin:0">라이트는 게임 속 모모톡처럼 보입니다.</p></fieldset>
     <label class="switch"><input type="checkbox" id="pref-photos" ${prefs.photos ? "checked" : ""}> 학생 프로필 사진 보기</label>
     <p class="muted">끄면 사진 대신 이름 첫 글자로 표시됩니다.${IN_CLAUDE ? " (claude.ai 페이지는 외부 이미지를 불러올 수 없어 항상 첫 글자로 표시됩니다.)" : ""}</p>
+    <label class="switch"><input type="checkbox" id="pref-suggest" ${prefs.suggest ? "checked" : ""}> 추천 답변 보기</label>
+    <p class="muted">답장마다 선생님이 할 만한 말·행동 3개를 입력칸 위에 보여 줍니다. 누르면 입력칸에 채워지고, 고쳐서 보낼 수 있습니다. 끄면 AI가 추천을 만들지 않아 응답이 조금 빨라집니다.</p>
     <div class="prefs-links"><button type="button" class="btn ghost" id="pref-name">선생님 이름 바꾸기</button>${IN_CLAUDE ? "" : '<button type="button" class="btn ghost" id="pref-ai">AI 설정</button>'}</div>
-    <p class="muted">테마와 사진 설정은 이 기기 브라우저에만 저장됩니다.</p>
+    <p class="muted">이 설정들은 이 기기 브라우저에만 저장됩니다.</p>
     <div class="sheet-actions"><button class="btn primary" value="cancel">닫기</button></div>`;
   $("#sheet-body").querySelectorAll('input[name="theme"]').forEach((r) => (r.onchange = () => { prefs.theme = r.value; savePrefs(); applyTheme(); }));
   $("#pref-photos").onchange = (e) => { prefs.photos = e.target.checked; savePrefs(); rerenderFaces(); };
+  $("#pref-suggest").onchange = (e) => { prefs.suggest = e.target.checked; savePrefs(); if (state.room) renderSuggest(); };
   $("#pref-name").onclick = () => { $("#sheet").close(); $("#open-settings").click(); };
   $("#pref-ai")?.addEventListener("click", () => { $("#sheet").close(); openAiSheet(); });
   openSheet();
@@ -1117,12 +1143,30 @@ function renderChatHead() {
   $("#chat-sub").textContent = sub || "장면을 준비하는 중";
 }
 
+// 마지막 메시지가 답장이고 추천 답변이 있으면 입력칸 위에 보여 준다. 누르면 입력칸에 채워지고, 고쳐서 보낼 수 있다.
+function renderSuggest() {
+  const box = $("#suggest"), last = state.room?.messages.at(-1);
+  const list = prefs.suggest && !state.busy && last?.role === "assistant" ? last.suggest || [] : [];
+  box.hidden = !list.length;
+  box.innerHTML = list.map((s, i) => `<button type="button" class="chip" data-s="${i}" title="${esc(s)}">${esc(s)}</button>`).join("");
+  box.scrollLeft = 0;
+}
+$("#suggest").addEventListener("pointerdown", (e) => e.preventDefault()); // 누를 때 입력칸 포커스가 빠져 키보드가 닫히지 않게
+$("#suggest").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-s]"), last = state.room?.messages.at(-1);
+  if (!b || !last?.suggest) return;
+  const box = $("#input");
+  box.value = last.suggest[Number(b.dataset.s)];
+  box.focus(); box.setSelectionRange(box.value.length, box.value.length);
+});
+
 function renderChat({ keepScroll = false } = {}) {
   clearSelection(); // 다시 그리면 메시지 번호가 바뀔 수 있으므로 선택을 푼다
   renderChatHead();
   const room = state.room, box = $("#messages"), top = box.scrollTop;
   box.innerHTML = room.messages.length ? room.messages.map(messageHtml).join("") : `<li class="empty">첫 마디를 건네 보세요.</li>`;
   if (keepScroll) { box.scrollTop = top; updateJump(); } else scrollDown();
+  renderSuggest();
 }
 
 // ───────── 메시지 삭제: 메시지를 누르면 입력칸 위에 '삭제' 막대가 나온다 ─────────
@@ -1198,6 +1242,7 @@ function setBusy(on) {
   if (on) clearSelection();
   ["#btn-continue", "#btn-regen", "#btn-undo"].forEach((s) => ($(s).disabled = on));
   $("#send").textContent = on ? "멈추기" : "보내기";
+  renderSuggest();
 }
 
 const ERROR_TEXT = {
@@ -1256,10 +1301,11 @@ async function runTurn(kind) {
     if (!IN_CLAUDE) opts.onStatus = (msg) => { const live = $("#live"); if (live) live.innerHTML = `<span class="status-line">${esc(msg)}</span>`; };
     const { text: raw, truncated, fallback } = await state.sample(buildTurns(room), opts);
     if (fallback) toast(`${fallback.from} 사용 한도 때문에 ${fallback.to}(으)로 바꿨습니다. 앞으로 이 모델을 계속 씁니다. 원래 모델로 돌아가려면 'AI 설정'에서 저장하세요.`);
-    const { text, changes, scene } = parseReply(raw);
+    const { text, changes, scene, suggest } = parseReply(raw);
     const applied = applyAffection(room, changes);
     const msg = { role: "assistant", content: text || "*(응답이 비어 있습니다. 다시 생성해 보세요.)*", affection: applied };
     if (scene) msg.scene = scene;
+    if (suggest.length) msg.suggest = suggest;
     room.messages.push(msg);
     if (room.mode === "free") {
       room.met = [...new Set([...(room.met || []), ...(scene?.present || []), ...Object.keys(applied)])];
