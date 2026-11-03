@@ -569,6 +569,47 @@ function casualToPeers(said, st) {
   });
 }
 
+// ───────── 두 번에 나눠 외치는 대사 (케이: '…이번에야말로!!' → 다음 응답 '선생님을 죽이고!! 저도 죽겠어요!!') ─────────
+const squash = (s) => s.replace(/[\s!！?~…."“”'-]/g, "");
+const dialogue = (line) => { // '이름 [감정]: "대사"' → { st, said }
+  const m = line.match(/^\s*([^:："*]{1,40}?)\s*[:：]\s*["“](.*?)["”]?\s*$/);
+  const st = m && findStudentByName(splitSpeaker(m[1]).who);
+  return st ? { st, said: m[2] } : null;
+};
+// 앞부분(cue)으로 끝나는 대사인가
+const endsWithCue = (said, cs) => new RegExp(`${cs.cue}[!！~…\\s]*$`).test(said);
+// 직전 답장이 '…이번에야말로!!'로 끝났다면 그 학생을 돌려준다 → 이번 응답에서 뒷말을 외치게 한다
+function pendingCatch(room) {
+  const last = [...room.messages].reverse().find((m) => m.role === "assistant");
+  const lines = (last?.content || "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const d = lines.length && dialogue(lines.at(-1));
+  return d && d.st.catch_split && endsWithCue(d.said, d.st.catch_split) ? d.st : null;
+}
+// AI가 한 번에 다 외쳐 버리면 앞부분에서 끊고, 그 뒤의 줄은 버린다 (다음 응답에서 뒷말이 나온다)
+function cutCatch(text) {
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const d = dialogue(lines[i]), cs = d?.st.catch_split;
+    if (!cs) continue;
+    const at = d.said.indexOf(cs.cue);
+    if (at < 0) continue;
+    const rest = d.said.slice(at + cs.cue.length);
+    const payoff = squash(cs.line).slice(0, 5);
+    if (squash(rest).startsWith(payoff)) { // '이번에야말로!! 선생님을 죽이고…' → '이번에야말로!!'
+      lines[i] = lines[i].replace(d.said, d.said.slice(0, at + cs.cue.length) + "!!");
+      return lines.slice(0, i + 1).join("\n");
+    }
+    if (endsWithCue(d.said, cs)) return lines.slice(0, i + 1).join("\n"); // 앞부분 뒤에 지문 등이 붙었으면 그 대사에서 끝낸다
+  }
+  return text;
+}
+// 이번 응답이 뒷말을 빠뜨렸으면 맨 앞에 붙인다
+function ensurePayoff(text, st) {
+  const cs = st.catch_split;
+  if (squash(text).includes(squash(cs.line).slice(0, 5))) return text;
+  return `${st.name} [${cs.emo || "화남"}]: "${cs.line}"\n${text}`;
+}
+
 // ───────── 프롬프트 (Python app/prompts.py 를 옮긴 것) ─────────
 const STAGES = [
   [0, "서먹함", "아직 선생님을 잘 모른다. 예의는 지키지만 거리를 두고, 개인적인 이야기는 피한다."],
@@ -736,11 +777,14 @@ function rosterDigest() {
 const SUGGEST_RULE = `[추천 답변]
 응답의 맨 마지막(호감도 태그 다음 줄)에, 선생님이 다음에 할 만한 말이나 행동 보기 3개를 화면에 보이지 않는 태그로 적습니다.
 형식: [추천 답변: 보기1 | 보기2 | 보기3]
-- 유저가 골라 쓰는 보기일 뿐입니다. 이야기 본문에 선생님의 대사·행동을 쓰지 않는다는 1번 규칙은 그대로입니다.
-- 각 보기는 30자 이내. 말은 따옴표 없이 선생님의 말투로, 행동은 *별표*로 감쌉니다. 말과 행동을 섞어도 됩니다.
-- 세 보기는 서로 다른 방향으로(예: 다정하게 받아 주기 / 가볍게 장난치기 / 이야기를 앞으로 진행하기). 지금 장면과 학생의 말에 바로 이어지게 하세요.
+- 보기는 모두 '선생님(유저)'이 할 말이나 행동입니다. 학생의 대사·행동·반응을 보기로 쓰지 마세요. 이야기 본문에 선생님의 대사·행동을 쓰지 않는다는 1번 규칙은 그대로입니다.
+- 선생님의 말은 어른이 학생에게 하듯 자연스러운 반말 구어체로, 실제 사람이 채팅에 칠 법한 짧은 한두 문장(25자 안팎)으로 씁니다. 따옴표 없이 씁니다.
+  선생님이 자기 자신을 '선생님'이라고 부르며 시작하거나("선생님, …"), 학생에게 존댓말을 쓰거나, 번역투·설명조로 쓰지 마세요.
+- 행동은 *별표*로 감싸고, 주어 없이 선생님이 하는 동작만 씁니다. (O) *머리를 쓰다듬는다* (X) *모모이가 웃는다* (X) *선생님이 고개를 끄덕인다*
+- 세 보기는 서로 다른 방향으로(예: 다정하게 받아 주기 / 가볍게 장난치기 / 이야기를 앞으로 진행하기). 방금 학생이 한 말에 바로 이어지게 하세요.
 - 미성년자 보호 규칙(2번)을 어기는 보기는 만들지 않습니다.
-예) [추천 답변: 고마워, 덕분에 살았어 | *유우카의 계산기를 슬쩍 가져간다* | 그럼 영수증 정리부터 같이 하자]`;
+예) 학생이 "선생님, 또 영수증이에요?"라고 했다면
+    [추천 답변: 미안, 이번이 진짜 마지막이야 | *영수증을 슬쩍 등 뒤로 숨긴다* | 대신 정리는 내가 도울게]`;
 
 function buildSystem(room) {
   const studs = focusStudents(room);
@@ -802,7 +846,9 @@ function buildTurns(room) {
     turns.push({ role: "user", content: "(선생님이 막 이곳에 도착했다. 장면을 시작해 주세요.)" });
   else if (turns.at(-1).role === "assistant")
     turns.push({ role: "user", content: "(선생님은 잠시 말없이 지켜본다. 새 사건을 만들지 말고, 지금 장면 안에서 인물들의 반응을 자연스럽게 이어 주세요.)" });
-  const memo = [profileChangeNote(room), castReminder(room)].filter(Boolean).join("\n\n");
+  const pend = pendingCatch(room);
+  const catchNote = pend ? `(시스템 메모 — 선생님의 말이 아님) ${pend.name}가 직전 응답에서 '${pend.catch_split.cue}!!'까지만 외치고 말을 끊었습니다. 선생님이 무슨 말을 했든, 이번 응답은 반드시 ${pend.name} [${pend.catch_split.emo || "화남"}]: "${pend.catch_split.line}" 로 시작하고, 그 뒤에 이어지는 반응을 쓰세요.` : "";
+  const memo = [catchNote, profileChangeNote(room), castReminder(room)].filter(Boolean).join("\n\n");
   if (memo) turns.at(-1).content += "\n\n" + memo;
   return turns;
 }
@@ -857,6 +903,14 @@ const SCENE_TAG = /\[장면\s+([^\]]*)\]/g;
 const SUGGEST_TAG = /\[추천(?:\s*답변)?\s*[:：]\s*([^\]]*)\]/g;
 
 // 응답에서 내부 태그를 떼어 내고 {보이는 글, 호감도 변화, 장면}을 돌려준다.
+// 추천 답변 중 선생님이 할 말·행동이 아닌 것(학생의 대사나 행동)을 걸러 낸다
+const STUDENT_SUBJECT = () => new RegExp(`^\\*?\\s*(?:${Object.values(state.students).map((s) => s.name).join("|")})\\s*(?:이|가|은|는|도)\\s`);
+function soundsLikeSensei(x) {
+  if (/^[^:：]{1,12}[:：]/.test(x)) return false;                 // '모모이: …' 처럼 화자가 붙은 대사
+  if (/^\*?\s*선생님\s*(?:[,!?…]|이|은|는|께서)/.test(x)) return false; // '선생님, …'(학생 말투) / '*선생님이 …*'
+  if (STUDENT_SUBJECT().test(x)) return false;                      // '*모모이가 웃는다*'
+  return true;
+}
 function parseReply(raw) {
   const changes = {};
   for (const [, sid, d] of raw.matchAll(TAG)) changes[sid] = Math.max(-5, Math.min(5, parseInt(d, 10))); // AI가 범위를 넘겨도 ±5로 자른다
@@ -869,7 +923,7 @@ function parseReply(raw) {
   // 추천 답변: '[추천 답변: 보기1 | 보기2 | 보기3]' → ["보기1", "보기2", "보기3"]
   let suggest = [];
   for (const [, body] of raw.matchAll(SUGGEST_TAG))
-    suggest = body.split("|").map((x) => koreanizeNames(x.trim().replace(/^["“”]+|["“”]+$/g, ""))).filter((x) => x && x.length <= 60).slice(0, 3);
+    suggest = body.split("|").map((x) => koreanizeNames(x.trim().replace(/^["“”]+|["“”]+$/g, ""))).filter((x) => x && x.length <= 60 && soundsLikeSensei(x)).slice(0, 3);
   return { text: koreanizeNames(raw.replace(TAG, "").replace(SCENE_TAG, "").replace(SUGGEST_TAG, "").trim()), changes, scene, suggest };
 }
 // 스트리밍 중에는 반쯤 쓰인 태그(끝부분의 '[호감도…', '[장면…')도 숨긴다.
@@ -1344,7 +1398,10 @@ async function runTurn(kind) {
     if (!IN_CLAUDE) opts.onStatus = (msg) => { const live = $("#live"); if (live) live.innerHTML = `<span class="status-line">${esc(msg)}</span>`; };
     const { text: raw, truncated, fallback } = await state.sample(buildTurns(room), opts);
     if (fallback) toast(`${fallback.from} 사용 한도 때문에 ${fallback.to}(으)로 바꿨습니다. 앞으로 이 모델을 계속 씁니다. 원래 모델로 돌아가려면 'AI 설정'에서 저장하세요.`);
-    const { text, changes, scene, suggest } = parseReply(raw);
+    const pend = pendingCatch(room);
+    let { text, changes, scene, suggest } = parseReply(raw);
+    // 직전에 '이번에야말로!!'로 끊겼으면 이번엔 뒷말을 보장하고, 아니면 한 번에 다 외친 대사를 앞부분에서 끊는다
+    if (text) text = pend ? ensurePayoff(text, pend) : cutCatch(text);
     const applied = applyAffection(room, changes);
     const msg = { role: "assistant", content: text || "*(응답이 비어 있습니다. 다시 생성해 보세요.)*", affection: applied };
     if (scene) msg.scene = scene;

@@ -144,6 +144,9 @@ def apply_persona(entry: dict, persona: dict | None) -> dict:
     entry["honorific"] = persona.get("h", "존댓말")
     # 선생님을 부르는 호칭 (게임 대사 기준). 대부분 '선생님'이고, 예외만 페르소나의 "c"에 적는다.
     entry["call"] = persona.get("c", "선생님")
+    # 두 번에 나눠 외치는 대사 (예: 케이 '이번에야말로!!' → 다음 응답 '선생님을 죽이고!! 저도 죽겠어요!!')
+    if persona.get("cs"):
+        entry["catch_split"] = persona["cs"]
     return entry
 
 
