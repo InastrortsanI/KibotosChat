@@ -646,6 +646,26 @@ function cutCatch(text) {
   }
   return text;
 }
+// 한 번 외친 뒤에는 답장 CATCH_COOLDOWN개가 지나기 전까지 다시 외치지 않는다 (계속 나오면 흐름이 끊기므로)
+const CATCH_COOLDOWN = 12;
+function catchCooling(room, st) {
+  const cs = st.catch_split, payoff = squash(cs.line).slice(0, 5);
+  const replies = room.messages.filter((m) => m.role === "assistant").slice(-CATCH_COOLDOWN);
+  return replies.some((m) => m.content.split("\n").some((l) => {
+    const d = dialogue(l);
+    return d && d.st.id === st.id && (squash(d.said).includes(payoff) || endsWithCue(d.said, cs));
+  }));
+}
+// 쉬는 동안 AI가 또 외치면 그 문장만 빼고, 대사가 비면 짧은 신음으로 바꾼다
+function suppressCatch(text, room) {
+  return text.split("\n").map((l) => {
+    const d = dialogue(l), cs = d?.st.catch_split;
+    if (!cs || !catchCooling(room, d.st)) return l;
+    const payoff = squash(cs.line).slice(0, 5);
+    const kept = (d.said.match(/[^.!?…~]+[.!?…~]*/g) || []).filter((s) => !s.includes(cs.cue) && !squash(s).includes(payoff)).join("").trim();
+    return l.replace(d.said, kept || "으으……!!");
+  }).join("\n");
+}
 // 이번 응답이 뒷말을 빠뜨렸으면 맨 앞에 붙인다
 function ensurePayoff(text, st) {
   const cs = st.catch_split;
@@ -941,7 +961,8 @@ function castReminder(room) {
     const p = peerLine(s), warn = peerWarning(s, names);
     return `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}${(s.honorific || "존댓말").startsWith("존댓말") ? "(선생님을 '너'라고 부르지 않음)" : ""}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. 말투: ${first(s.speech, 70)}.` +
       `${warn ? " ★" + warn : p ? " 같은 자리 학생에게 — " + p + "." : ""}${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}${s.appearance ? " 외모: " + looksShort(s) : ""}` +
-      (s.catch_split ? ` ★부끄럽거나 수치스러운 순간(놀림, 칭찬, 볼 찌르기, 속마음을 들킴 등)에는 '…${s.catch_split.cue}!!'까지만 외치고 그 대사로 응답을 끝낸다. 뒷말('${s.catch_split.line}')은 선생님이 대답한 다음 응답에서 외친다.` : "");
+      (s.catch_split && catchCooling(room, s) ? ` ★최근에 이미 '${s.catch_split.cue}!!' 폭발을 했으므로 당분간 '${s.catch_split.cue}', '${s.catch_split.line}' 대사는 쓰지 않는다. 부끄러우면 얼굴을 붉히거나 툴툴대는 정도로 반응한다.` :
+       s.catch_split ? ` ★부끄럽거나 수치스러운 순간(놀림, 칭찬, 볼 찌르기, 속마음을 들킴 등)에는 '…${s.catch_split.cue}!!'까지만 외치고 그 대사로 응답을 끝낸다. 뒷말('${s.catch_split.line}')은 선생님이 대답한 다음 응답에서 외친다.` : "");
   };
   return `(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 앞선 답장의 말투가 달라도(설정이 바뀌기 전 기록일 수 있음) 아래와 프로필이 기준입니다)\n${studs.map(line).join("\n")}`;
 }
@@ -1450,7 +1471,7 @@ async function runTurn(kind) {
     const pend = pendingCatch(room);
     let { text, changes, scene, suggest } = parseReply(raw);
     // 직전에 '이번에야말로!!'로 끊겼으면 이번엔 뒷말을 보장하고, 아니면 한 번에 다 외친 대사를 앞부분에서 끊는다
-    if (text) text = pend ? ensurePayoff(text, pend) : cutCatch(text);
+    if (text) text = pend ? ensurePayoff(text, pend) : cutCatch(suppressCatch(text, room));
     const applied = applyAffection(room, changes);
     const msg = { role: "assistant", content: text || "*(응답이 비어 있습니다. 다시 생성해 보세요.)*", affection: applied };
     if (scene) msg.scene = scene;
