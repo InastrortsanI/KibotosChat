@@ -536,8 +536,37 @@ function koreanizeNames(text) {
     let said = m[3].replace(WRONG_CALL, call);
     if (call === "선생") said = said.replace(/선생님/g, "선생"); // 호시노·카요코 등은 공식 대사에서 항상 '선생'
     if ((st.honorific || "존댓말").startsWith("존댓말") && said.includes(call)) said = politeYou(said, call);
+    said = casualToPeers(said, st);
     return st.name + (emo ? ` [${emo}]` : "") + m[2] + said;
   }).join("\n");
+}
+
+// 선생님에게는 존댓말, 친구에게는 반말인 학생(예: 미도리)이 친구에게 말하는 문장에 존댓말 어미를 붙이면 반말로 고친다.
+// 프롬프트로 지시해도 AI가 '유즈 쨩, …거든요?'처럼 존댓말을 섞는 일이 있어서, 확실한 경우만 화면에서 바로잡는다.
+// 대상: '유즈 쨩, …' 처럼 친구를 부르며 시작하는 문장, 또는 '…그렇죠, 언니?' 처럼 친구를 부르며 끝나는 문장.
+// 해요체(…요, …죠, …예요)와 몇 가지 하십시오체(…습니다, …합니다)만 바꾸고, 애매한 어미는 그대로 둔다.
+const TO_CASUAL = [
+  [/(이)?에요$|예요$/, (m, i) => (i ? "이야" : "야")], [/이죠$/, () => "이지"], [/죠$/, () => "지"],
+  [/하세요$/, () => "해"], [/보세요$/, () => "봐"], [/주세요$/, () => "줘"], [/오세요$/, () => "와"], [/가세요$/, () => "가"], [/마세요$/, () => "마"],
+  [/합니다$/, () => "해"], [/입니다$/, () => "이야"], [/습니다$/, () => "어"], [/합니까$/, () => "해"], [/입니까$/, () => "이야"], [/습니까$/, () => "어"],
+  [/([가-힣])요$/, (m, c) => (c === "세" || c === "시" ? m : c)], // '많거든요'→'많거든', '그래요'→'그래' (…세요/…시요는 그대로)
+];
+function casualToPeers(said, st) {
+  if (!(st.honorific || "존댓말").startsWith("존댓말")) return said;
+  const calls = casualPeers(st).map((p) => p.call.replace(/\s+/g, "\\s*"));
+  if (!calls.length) return said;
+  const alt = calls.join("|");
+  const head = new RegExp(`^\\s*(?:${alt})\\s*[,!?…~]`), tail = new RegExp(`[,，]\\s*(?:${alt})\\s*[?!.…~]*$`);
+  const lastWord = new RegExp(`([가-힣]+)(?=(?:\\s*[,，]\\s*(?:${alt}))?\\s*[.!?…~]*\\s*$)`);
+  // 문장 단위로 나눈다 (구분 기호는 앞 문장에 붙여 둔다)
+  return said.replace(/[^.!?…~"”]+[.!?…~]*/g, (sent) => {
+    if (!head.test(sent) && !tail.test(sent.trim())) return sent;
+    // '…그렇죠, 언니?'는 부름말 앞 부분의 어미를, '유즈 쨩, …거든요?'는 문장 끝 어미를 바꾼다
+    return sent.replace(lastWord, (word) => {
+      for (const [rx, fn] of TO_CASUAL) if (rx.test(word)) return word.replace(rx, fn);
+      return word;
+    });
+  });
 }
 
 // ───────── 프롬프트 (Python app/prompts.py 를 옮긴 것) ─────────

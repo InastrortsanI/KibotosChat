@@ -121,7 +121,8 @@ APPEARANCE = ROOT / "tools" / "appearance.json"  # 외모 요약 (직접 작성)
 PEERS = ROOT / "tools" / "peers.json"            # 학생 간 말투 (tools/build_peers.py 가 시나리오에서 집계)
 # 부름말만으로는 누군지 알 수 없는 경우와, 집계에 잡히지 않았지만 대사로 확인한 경우를 손으로 보충한다.
 TITLE_WHO = {("midori", "#언니"): "모모이", ("momoi", "#언니"): None}
-PEER_EXTRA = {"midori": [["kei", "반말", "케이 쨩", 9]]}
+PEER_EXTRA = {"midori": [["kei", "반말", "케이 쨩", 9]],  # '케이 쨩도 너무 화내지 말아 줘'
+              "momoi": [["yuzu", "반말", "유즈", 9]]}     # '유즈는 어떻게 생각해?' ('유즈!'처럼 부름말만 있는 대사가 많아 집계에서 빠짐)
 
 
 def load_personas() -> dict:
