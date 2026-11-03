@@ -546,6 +546,8 @@ function koreanizeNames(text) {
     if (call === "선생") said = said.replace(/선생님/g, "선생"); // 호시노·카요코 등은 공식 대사에서 항상 '선생'
     if ((st.honorific || "존댓말").startsWith("존댓말") && said.includes(call)) said = politeYou(said, call);
     said = fixPeerRegister(said, st);
+    said = dropTagQuestion(said);
+    if (st.honorific === "반말") said = toSensei(said, call); // 반말 학생이 선생님에게 '…데요?' 하면 반말로
     return st.name + (emo ? ` [${emo}]` : "") + m[2] + said;
   }).join("\n");
 }
@@ -588,6 +590,28 @@ function toPeers(said, st, reg, table) {
       for (const [rx, fn] of table) if (rx.test(word)) return word.replace(rx, fn);
       return word;
     });
+  });
+}
+
+// 선생님에게 답하다가 옆 학생에게 '그렇지, ○○?' 하고 동의를 구하는 꼬리 문장을 지운다.
+// AI가 이 버릇을 한 번 시작하면 대화 기록을 따라 하며 계속 반복해서, 화면에서 아예 빼 버린다.
+let TAGQ = null;
+function dropTagQuestion(said) {
+  if (!TAGQ) {
+    const names = Object.values(state.students).map((s) => s.name).sort((a, b) => b.length - a.length).join("|");
+    TAGQ = new RegExp(`(^|[.!?…~]\\s*)(?:그렇지|그치|그쵸|그렇죠|맞지|맞죠|안 그래|안 그래요|그렇잖아|그렇잖아요|그렇지 않아|그렇지 않아요)\\s*[,，]\\s*(?:${names}|언니|선배)(?:\\s?(?:쨩|짱|선배|씨|님))?\\s*[?？!…~.]*(?=\\s*["”]?\\s*$)`, "g");
+  }
+  const out = said.replace(TAGQ, "$1").replace(/\s+(["”]?)$/, "$1");
+  return out.replace(/["”\s]/g, "") ? out : said; // 대사 전체가 꼬리 문장뿐이면 그대로 둔다
+}
+// 선생님에게 반말을 쓰는 학생(모모이 등)이 선생님을 부르는 문장에 존댓말 어미를 붙이면 반말로 고친다
+function toSensei(said, call) {
+  const c = call.replace(/\s+/g, "\\s*");
+  const head = new RegExp(`^\\s*${c}\\s*[,!?…~]`), tail = new RegExp(`[,，]\\s*${c}\\s*[?!.…~]*$`);
+  const lastWord = new RegExp(`([가-힣]+)(?=(?:\\s*[,，]\\s*${c})?\\s*[.!?…~]*\\s*$)`);
+  return said.replace(/[^.!?…~"”]+[.!?…~]*/g, (sent) => {
+    if (!head.test(sent) && !tail.test(sent.trim())) return sent;
+    return sent.replace(lastWord, (word) => { for (const [rx, fn] of TO_CASUAL) if (rx.test(word)) return word.replace(rx, fn); return word; });
   });
 }
 
