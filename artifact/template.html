@@ -656,11 +656,19 @@ function catchCooling(room, st) {
     return d && d.st.id === st.id && (squash(d.said).includes(payoff) || endsWithCue(d.said, cs));
   }));
 }
-// 쉬는 동안 AI가 또 외치면 그 문장만 빼고, 대사가 비면 짧은 신음으로 바꾼다
+// 폭발은 그 학생 '자신'이 놀림받거나 부끄러울 때만. 선생님의 마지막 입력이 그 학생을 향하지 않았으면
+// (이름이 없고, 1:1 대화도 아니면) 다른 학생 일에 끼어든 것으로 보고 막는다.
+function catchAimedAt(room, st) {
+  const lastUser = [...room.messages].reverse().find((m) => m.role === "user");
+  if ((lastUser?.content || "").includes(st.name)) return true;
+  const present = currentScene(room)?.present?.length ? currentScene(room).present : room.student_list;
+  return present.length === 1 && present[0] === st.id;
+}
+// 쉬는 동안이거나 다른 학생 일일 때 AI가 외치면 그 문장만 빼고, 대사가 비면 짧은 신음으로 바꾼다
 function suppressCatch(text, room) {
   return text.split("\n").map((l) => {
     const d = dialogue(l), cs = d?.st.catch_split;
-    if (!cs || !catchCooling(room, d.st)) return l;
+    if (!cs || (!catchCooling(room, d.st) && catchAimedAt(room, d.st))) return l;
     const payoff = squash(cs.line).slice(0, 5);
     const kept = (d.said.match(/[^.!?…~]+[.!?…~]*/g) || []).filter((s) => !s.includes(cs.cue) && !squash(s).includes(payoff)).join("").trim();
     return l.replace(d.said, kept || "으으……!!");
@@ -962,7 +970,7 @@ function castReminder(room) {
     return `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}${(s.honorific || "존댓말").startsWith("존댓말") ? "(선생님을 '너'라고 부르지 않음)" : ""}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. 말투: ${first(s.speech, 70)}.` +
       `${warn ? " ★" + warn : p ? " 같은 자리 학생에게 — " + p + "." : ""}${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}${s.appearance ? " 외모: " + looksShort(s) : ""}` +
       (s.catch_split && catchCooling(room, s) ? ` ★최근에 이미 '${s.catch_split.cue}!!' 폭발을 했으므로 당분간 '${s.catch_split.cue}', '${s.catch_split.line}' 대사는 쓰지 않는다. 부끄러우면 얼굴을 붉히거나 툴툴대는 정도로 반응한다.` :
-       s.catch_split ? ` ★부끄럽거나 수치스러운 순간(놀림, 칭찬, 볼 찌르기, 속마음을 들킴 등)에는 '…${s.catch_split.cue}!!'까지만 외치고 그 대사로 응답을 끝낸다. 뒷말('${s.catch_split.line}')은 선생님이 대답한 다음 응답에서 외친다.` : "");
+       s.catch_split ? ` ★${s.name} 자신이 선생님에게 놀림·칭찬을 받거나 속마음을 들켜 부끄러울 때만(다른 학생이 부끄러워하는 상황에서는 쓰지 않음) '…${s.catch_split.cue}!!'까지만 외치고 그 대사로 응답을 끝낸다. 뒷말('${s.catch_split.line}')은 선생님이 대답한 다음 응답에서 외친다.` : "");
   };
   return `(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 앞선 답장의 말투가 달라도(설정이 바뀌기 전 기록일 수 있음) 아래와 프로필이 기준입니다)\n${studs.map(line).join("\n")}`;
 }
