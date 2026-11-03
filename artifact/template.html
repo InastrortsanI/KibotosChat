@@ -536,7 +536,7 @@ function koreanizeNames(text) {
     let said = m[3].replace(WRONG_CALL, call);
     if (call === "선생") said = said.replace(/선생님/g, "선생"); // 호시노·카요코 등은 공식 대사에서 항상 '선생'
     if ((st.honorific || "존댓말").startsWith("존댓말") && said.includes(call)) said = politeYou(said, call);
-    said = casualToPeers(said, st);
+    said = fixPeerRegister(said, st);
     return st.name + (emo ? ` [${emo}]` : "") + m[2] + said;
   }).join("\n");
 }
@@ -551,9 +551,22 @@ const TO_CASUAL = [
   [/합니다$/, () => "해"], [/입니다$/, () => "이야"], [/습니다$/, () => "어"], [/합니까$/, () => "해"], [/입니까$/, () => "이야"], [/습니까$/, () => "어"],
   [/([가-힣])요$/, (m, c) => (c === "세" || c === "시" ? m : c)], // '많거든요'→'많거든', '그래요'→'그래' (…세요/…시요는 그대로)
 ];
-function casualToPeers(said, st) {
-  if (!(st.honorific || "존댓말").startsWith("존댓말")) return said;
-  const calls = casualPeers(st).map((p) => p.call.replace(/\s+/g, "\\s*"));
+// 반대로, 게임에서 존댓말을 쓰는 상대(예: 케이 → 아리스)에게 반말 어미가 붙으면 존댓말로 고친다 (확실한 어미만)
+const TO_POLITE = [
+  [/거야$/, () => "거예요"], [/이야$/, () => "이에요"], [/지$/, () => "죠"],
+  [/(어|아|해|래|네|게|걸|거든|잖아|데|대|까)$/, (m) => m + "요"],
+];
+function fixPeerRegister(said, st) {
+  return toPeers(toPeers(said, st, "반말", TO_CASUAL), st, "존댓말", TO_POLITE);
+}
+// peers 문자열에서 해당 높임(반말/존댓말)의 상대 부름말만 뽑는다
+function peerCalls(s, reg) {
+  const g = (s.peers || "").split(" / ").find((x) => x.startsWith(reg + ":"));
+  return g ? [...g.matchAll(/'([^']+)'/g)].map((m) => m[1]).filter((c) => !/^(선배|부장|회장|단장|위원장|실장)/.test(c)) : [];
+}
+function toPeers(said, st, reg, table) {
+  if (reg === "반말" && !(st.honorific || "존댓말").startsWith("존댓말")) return said; // 원래 반말인 학생은 손대지 않는다
+  const calls = (reg === "반말" ? casualPeers(st).map((p) => p.call) : peerCalls(st, reg)).map((c) => c.replace(/\s+/g, "\\s*"));
   if (!calls.length) return said;
   const alt = calls.join("|");
   const head = new RegExp(`^\\s*(?:${alt})\\s*[,!?…~]`), tail = new RegExp(`[,，]\\s*(?:${alt})\\s*[?!.…~]*$`);
@@ -563,7 +576,7 @@ function casualToPeers(said, st) {
     if (!head.test(sent) && !tail.test(sent.trim())) return sent;
     // '…그렇죠, 언니?'는 부름말 앞 부분의 어미를, '유즈 쨩, …거든요?'는 문장 끝 어미를 바꾼다
     return sent.replace(lastWord, (word) => {
-      for (const [rx, fn] of TO_CASUAL) if (rx.test(word)) return word.replace(rx, fn);
+      for (const [rx, fn] of table) if (rx.test(word)) return word.replace(rx, fn);
       return word;
     });
   });
@@ -592,7 +605,13 @@ function cutCatch(text) {
     const d = dialogue(lines[i]), cs = d?.st.catch_split;
     if (!cs) continue;
     const at = d.said.indexOf(cs.cue);
-    if (at < 0) continue;
+    if (at < 0) { // 앞부분 없이 바로 뒷말부터 외쳤으면('선생님을 죽이고 저도…') 그 자리를 앞부분으로 바꾸고 끊는다
+      const pm = d.said.match(new RegExp([...squash(cs.line).slice(0, 5)].join("[\\s!！?~…,]*")));
+      if (!pm) continue;
+      const before = d.said.slice(0, pm.index).trim();
+      lines[i] = lines[i].replace(d.said, (before ? before + " " : "") + cs.cue + "!!");
+      return lines.slice(0, i + 1).join("\n");
+    }
     const rest = d.said.slice(at + cs.cue.length);
     const payoff = squash(cs.line).slice(0, 5);
     if (squash(rest).startsWith(payoff)) { // '이번에야말로!! 선생님을 죽이고…' → '이번에야말로!!'
