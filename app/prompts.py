@@ -94,6 +94,9 @@ def _student_block(s: dict, bond: Bond | None) -> str:
                        ("인간관계", "relations"), ("배경·스토리", "story")]:
         if s.get(key):
             lines.append(f"  · {label}: {s[key]}")
+    casual = next((g[3:].strip() for g in (s.get("peers") or "").split(" / ") if g.startswith("반말:")), "")
+    if casual and s.get("honorific", "존댓말").startswith("존댓말"):
+        lines.append(f"  · 주의: {s['name']}의 존댓말은 선생님(과 윗사람)에게만 씁니다. {casual}에게는 반드시 반말로 말합니다.")
     if s.get("detail") == "basic":
         lines.append("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)")
     if bond:

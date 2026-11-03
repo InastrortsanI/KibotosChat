@@ -21,7 +21,10 @@ OUT = ROOT / "tools" / "peers.json"
 
 SUFFIX = r"(?:\s?(?:쨩|짱|선배님|선배|님|씨|양|부장님|부장|회장님|회장|위원장님|위원장|반장|대장|소대장|실장님|실장))?"
 TITLE = re.compile(r"^(언니|선배님|선배|위원장님|회장님|부장님|부장|반장|대장님|실장님|단장님)\s*[,!?…~.]")
-POLITE = re.compile(r"(요|니다|니까|세요|죠|십시오|십니까|습니까|에요|예요)[\s.!?…~♪)]*$")
+# 문장 끝으로 높임을 판단한다. '하나코 씨…….'처럼 끝맺지 않은 말은 어느 쪽인지 알 수 없으므로 세지 않는다.
+END = r"[\s.!?…~♪)」』'\"]*$"
+POLITE = re.compile(r"(요|니다|니까|세요|죠|십시오|십니까|습니까|에요|예요|슴다|임다)" + END)
+CASUAL = re.compile(r"(어|아|야|지|해|래|자|니|냐|게|걸|거든|잖아|네|군|다|라|줘|봐|마|까|나|가|데|대|고|어라|렴|내|워|와|려|든)" + END)
 
 
 def main(db_dir: str) -> None:
@@ -56,10 +59,14 @@ def main(db_dir: str) -> None:
             if not target:
                 continue
             rest = text[hit.end():].strip()
-            if len(rest) < 3:
+            if POLITE.search(rest):
+                polite = 1
+            elif CASUAL.search(rest):
+                polite = 0
+            else:  # 문장을 끝맺지 않았거나 이름만 부른 대사
                 continue
             cell = stats[by_name[speaker]][target]
-            cell[1 if POLITE.search(rest) else 0] += 1
+            cell[polite] += 1
             cell[2][hit.group(1)] += 1
 
     out = {}

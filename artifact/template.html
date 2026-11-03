@@ -617,6 +617,25 @@ function honorificRule(h = "존댓말") {
   if (h.startsWith("반말")) return `${h} — 선생님에게 '~야', '~어', '~지' 같은 반말을 쓴다. 갑자기 존댓말로 바꾸지 않는다. (반드시 지킬 것)`;
   return `${h} (반드시 지킬 것)`;
 }
+// peers 문자열에서 '반말' 상대만 뽑는다. "반말: '언니'(모모이), 아리스('아리스 쨩') / 존댓말: …" → [{who:"모모이", call:"언니"}, …]
+function casualPeers(s) {
+  const g = (s.peers || "").split(" / ").find((x) => x.startsWith("반말:"));
+  if (!g) return [];
+  return g.slice(3).split(", ").map((x) => {
+    const m = x.trim().match(/^'([^']+)'\(([^)]+)\)$/) || x.trim().match(/^([^(']+)\('([^']+)'\)$/);
+    if (!m) return null;
+    return x.trim().startsWith("'") ? { who: m[2], call: m[1] } : { who: m[1], call: m[2] };
+  }).filter(Boolean);
+}
+// 선생님에게는 존댓말이지만 친구에게는 반말인 학생: 프로필의 '존댓말'을 모든 상대에게 적용하지 않도록 따로 못 박는다.
+function peerWarning(s, onlyNames) {
+  if (!(s.honorific || "존댓말").startsWith("존댓말")) return "";
+  const list = casualPeers(s).filter((p) => !onlyNames || onlyNames.includes(p.who));
+  if (!list.length) return "";
+  const ex = list[0];
+  return `${s.name}의 존댓말은 선생님(과 윗사람)에게만 씁니다. ${list.map((p) => `${p.who}('${p.call}')`).join(", ")}에게는 반드시 반말로 말합니다. ` +
+    `예) '${ex.call}, 이것 좀 봐.' (O) / '${ex.call}, 이것 좀 보세요.' (X)`;
+}
 function studentBlock(s) {
   const sc = schoolOf(s);
   const L = [`- ${s.name} (id: ${s.id})`, `  · 본명: ${s.full_name} / ${sc.name} ${s.year || ""} / 소속: ${s.club || "없음"}`,
@@ -626,6 +645,8 @@ function studentBlock(s) {
     ["외모", "appearance"], ["성격", "personality"], ["말투", "speech"], ["다른 학생에게 (게임 대사 기준)", "peers"],
     ["선생님을 대하는 태도", "sensei"], ["인간관계", "relations"], ["배경·스토리", "story"]])
     if (s[k]) L.push(`  · ${label}: ${s[k]}`);
+  const warn = peerWarning(s);
+  if (warn) L.push(`  · 주의: ${warn}`);
   if (s.detail === "basic") L.push("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)");
   const b = bondOf(s.id), st = stageOf(b.affection);
   L.push(`  · 선생님과의 관계: ${st.name} (호감도 ${b.affection}/100) — ${st.guide} 단, 친해져도 존댓말/반말과 말투는 바뀌지 않는다.`);
@@ -792,9 +813,9 @@ function castReminder(room) {
     return hit.length ? `${reg}: ${hit.join(", ")}` : "";
   }).filter(Boolean).join(" / ");
   const line = (s) => {
-    const p = peerLine(s);
-    return `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}${(s.honorific || "존댓말").startsWith("존댓말") ? "(선생님을 '너'라고 부르지 않음)" : ""}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. ${first(s.speech, 70)}.` +
-      `${p ? " 같은 자리 학생에게 — " + p + "." : ""}${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}${s.appearance ? " 외모: " + looksShort(s) : ""}`;
+    const p = peerLine(s), warn = peerWarning(s, names);
+    return `- ${s.name}: 선생님에게 ${(s.honorific || "존댓말").split(" (")[0]}${(s.honorific || "존댓말").startsWith("존댓말") ? "(선생님을 '너'라고 부르지 않음)" : ""}, 호칭 '${(s.call || "선생님").split(" (")[0]}'. 말투: ${first(s.speech, 70)}.` +
+      `${warn ? " ★" + warn : p ? " 같은 자리 학생에게 — " + p + "." : ""}${s.relations ? " 관계: " + first(s.relations, 50) + "." : ""}${s.appearance ? " 외모: " + looksShort(s) : ""}`;
   };
   return `(시스템 메모 — 선생님의 말이 아님. 이번 응답에서 반드시 지킬 인물 설정. 앞선 답장의 말투가 달라도(설정이 바뀌기 전 기록일 수 있음) 아래와 프로필이 기준입니다)\n${studs.map(line).join("\n")}`;
 }
