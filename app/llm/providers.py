@@ -36,6 +36,9 @@ class GeminiProvider(LLMProvider):
                 for t in self.normalize(turns)
             ],
             "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.9},
+            # 총격전·개그성 과격한 대사가 막히지 않게 '높음만 차단'. 성적 내용 필터는 기본값 유지.
+            "safetySettings": [{"category": f"HARM_CATEGORY_{c}", "threshold": "BLOCK_ONLY_HIGH"}
+                               for c in ("HARASSMENT", "HATE_SPEECH", "DANGEROUS_CONTENT")],
         }
         data = await _post(url, {"x-goog-api-key": self.api_key}, body)
         try:
