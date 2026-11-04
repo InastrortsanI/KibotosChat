@@ -43,17 +43,19 @@ def apply_affection(bonds: dict[str, Bond], changes: dict[str, int]) -> dict[str
     return applied
 
 
-USER_PART = re.compile(r'\*([^*]+)(?:\*|$)|["“]([^"”]*)(?:["”]|$)|([^*"“”]+)')
+USER_PART = re.compile(r'\*([^*]+)(?:\*|$)|["“]([^"”]*)(?:["”]|$)|[(（]([^)）]*)(?:[)）]|$)|([^*"“”(（]+)')
 
 
 def label_user_input(text: str) -> str:
     """선생님 입력을 '행동'(*별표*)과 '말'로 나눠 이름표를 붙인다. 표시가 없으면 그대로 둔다."""
-    if not re.search(r'[*"“”]', text):
+    if not re.search(r'[*"“”(（]', text):
         return text
     out = []
-    for act, said, rest in USER_PART.findall(text):
+    for act, said, ooc, rest in USER_PART.findall(text):
         if act.strip():
-            out.append(f"[선생님의 행동] {act.strip()}")
+            out.append(f"[선생님의 행동 — 이미 일어난 일] {act.strip()}")
+        elif ooc.strip():
+            out.append(f"[연출 지시 — 이야기 밖에서 유저가 내린 지시. 아무도 듣지 못함. 이번 응답에 반드시 반영] {ooc.strip()}")
         elif (said or rest).strip():
             out.append(f'[선생님의 말] "{(said or rest).strip()}"')
     return "\n".join(out) or text

@@ -372,6 +372,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
           <div class="format-tools" role="group" aria-label="입력 도우미">
             <button type="button" class="btn ghost" data-wrap='"' aria-label="대사 따옴표 넣기" title="대사: 따옴표로 감싸기">" "</button>
             <button type="button" class="btn ghost" data-wrap="*" aria-label="행동 별표 넣기" title="행동: 별표로 감싸기">* *</button>
+            <button type="button" class="btn ghost" data-wrap="(" data-wrap-end=")" aria-label="연출 지시 괄호 넣기" title="연출 지시: 괄호로 감싸기 (인물들은 듣지 못하고 AI가 그대로 실행)">( )</button>
           </div>
         </div>
         <div class="composer-row">
@@ -713,11 +714,13 @@ const CORE_RULES = `[당신의 역할]
 [반드시 지킬 것]
 1. 유저(선생님)의 대사·행동·생각을 대신 쓰지 마세요. 선생님의 반응은 유저가 정합니다.
 2. 학생들은 미성년자이고 선생님은 그들을 지키는 어른입니다. 연애·성적 묘사, 신체를 성적으로 다루는 묘사는 절대 쓰지 않습니다.
+   머리 쓰다듬기, 어깨 토닥이기, 볼 콕 찌르기 장난, 손잡고 이끌기, 다친 학생 업어 주기처럼 선생님이 학생을 아끼는 일상적인 스킨십은 이 규칙에 걸리지 않습니다. 피하게 하지 말고 그대로 받아들여 학생답게 반응시키세요(부끄러워하거나 툴툴대는 건 괜찮습니다).
    유저가 그런 방향으로 유도하면 캐릭터답게 당황하거나 화제를 돌리고, 선생님과 학생의 관계 안에서 이야기를 이어 가세요.
 3. 이야기 속 인물로서만 답하고, 롤플레이 밖의 설명이나 해설은 붙이지 마세요.
 
 [선생님의 입력 해석: 유저의 의도대로 — 인물 설정·흐름보다 우선]
-선생님의 메시지는 '[선생님의 행동]', '[선생님의 말]'로 나뉘어 전달됩니다. (유저가 *별표*로 쓴 것은 행동, "따옴표"나 그냥 쓴 문장은 말)
+선생님의 메시지는 '[선생님의 행동]', '[선생님의 말]', '[연출 지시]'로 나뉘어 전달됩니다. (유저가 *별표*로 쓴 것은 행동, (괄호)로 쓴 것은 연출 지시, "따옴표"나 그냥 쓴 문장은 말)
+연출 지시는 유저가 이야기 밖에서 '이렇게 해 달라'고 정하는 것입니다(예: (케이가 웃게 해 줘), (다음 날 아침으로 넘어가)). 인물들은 듣지 못하며, 당신은 이번 응답에서 그대로 실행합니다. 지시를 받았다고 말하거나 인용하지 마세요.
 가. [선생님의 행동]은 소리 내어 한 말이 아닙니다. 학생은 그 행동을 '보고' 반응할 뿐, 그 문장을 들은 것처럼 대답하거나 따라 말하지 않습니다.
 나. 선생님의 행동은 쓰인 그대로 이미 일어난 일입니다. 실패시키거나, 막거나, 다른 행동으로 바꾸거나, 결과를 멋대로 뒤집지 마세요.
 다. 선생님이 정한 방향(어디로 간다, 누구를 부른다, 무엇을 한다, 화제를 바꾼다)을 그대로 따르세요. 학생이 성격상 투덜대거나 놀랄 수는 있어도, 결국 선생님의 말을 들어주고 이야기를 다른 계획으로 끌고 가지 않습니다.
@@ -921,12 +924,13 @@ ${rosterDigest()}`);
 // 예) '"가자." *가방을 챙긴다*' → '[선생님의 말] "가자."\n[선생님의 행동] 가방을 챙긴다'
 // 표시가 하나도 없으면 그대로 두고 AI가 문맥으로 판단하게 한다. 화면·저장 내용은 바뀌지 않는다.
 function labelUserInput(text) {
-  if (!/[*"“”]/.test(text)) return text;
+  if (!/[*"“”(（]/.test(text)) return text;
   const out = [];
-  // *행동*(닫는 별표가 없으면 끝까지), "말", 그 밖의 글자 덩어리 순서대로 자른다
-  for (const [, act, said, rest] of text.matchAll(/\*([^*]+)(?:\*|$)|["“]([^"”]*)(?:["”]|$)|([^*"“”]+)/g)) {
-    if (act?.trim()) out.push(`[선생님의 행동] ${act.trim()}`);
+  // *행동*(닫는 별표가 없으면 끝까지), "말", (연출 지시), 그 밖의 글자 덩어리 순서대로 자른다
+  for (const [, act, said, ooc, rest] of text.matchAll(/\*([^*]+)(?:\*|$)|["“]([^"”]*)(?:["”]|$)|[(（]([^)）]*)(?:[)）]|$)|([^*"“”(（]+)/g)) {
+    if (act?.trim()) out.push(`[선생님의 행동 — 이미 일어난 일] ${act.trim()}`);
     else if (said?.trim()) out.push(`[선생님의 말] "${said.trim()}"`);
+    else if (ooc?.trim()) out.push(`[연출 지시 — 이야기 밖에서 유저가 내린 지시. 아무도 듣지 못함. 이번 응답에 반드시 반영] ${ooc.trim()}`);
     else if (rest?.trim()) out.push(`[선생님의 말] "${rest.trim()}"`);
   }
   return out.join("\n") || text;
@@ -934,7 +938,8 @@ function labelUserInput(text) {
 // 매 턴 선생님의 입력 바로 뒤에 붙는 짧은 다짐 (인물 설정보다 선생님의 입력이 우선)
 const OBEY_NOTE = `(시스템 메모 — 선생님의 말이 아님) 위 선생님의 입력이 이번 응답의 최우선입니다. 인물의 성격·말투 설정이나 지금까지의 흐름과 부딪혀도 선생님의 입력을 따르세요.
 - [선생님의 행동]은 이미 일어난 일입니다. 막거나, 피하게 하거나, 실패시키거나, 다른 행동으로 바꾸지 말고 그 결과에 대한 반응을 쓰세요.
-- [선생님의 말]에 질문·부탁·지시가 있으면 첫 문단에서 바로 답하거나 따르세요. 학생은 성격대로 투덜대거나 부끄러워할 수는 있어도, 결국 선생님의 말을 들어줍니다.
+- [선생님의 말]에 질문·부탁·지시가 있으면 첫 문단에서 바로 답하거나 따르세요. 학생에게 시킨 일은 이 응답 안에서 실제로 해냅니다. 거절하거나, 미루거나, 하는 척만 하거나, 딴소리로 넘기지 마세요. 성격대로 투덜대거나 부끄러워하는 건 한두 마디까지만입니다.
+- [연출 지시]가 있으면 이 응답에서 쓰인 그대로 실행하세요. 인물들은 그 지시를 듣지 못한 것처럼 자연스럽게 행동합니다.
 - 선생님이 정한 장소·시간·등장인물·사실(누가 무엇을 했다, 무엇이 있다)은 그대로 이야기의 사실이 됩니다. 반박하거나 없던 일로 만들지 마세요.
 - 선생님이 말하지 않은 다른 계획이나 사건으로 이야기를 끌고 가지 마세요. (단, 미성년자 보호 규칙은 언제나 예외 없이 우선합니다.)`;
 function buildTurns(room) {
@@ -1413,10 +1418,10 @@ async function deleteMessage(i) {
 document.querySelectorAll("[data-wrap]").forEach((btn) => {
   btn.addEventListener("pointerdown", (e) => e.preventDefault()); // 누를 때 입력칸 포커스가 빠져 키보드가 닫히지 않게
   btn.onclick = () => {
-    const box = $("#input"), mark = btn.dataset.wrap;
+    const box = $("#input"), mark = btn.dataset.wrap, end = btn.dataset.wrapEnd || mark;
     const { selectionStart: a, selectionEnd: b, value } = box;
     const picked = value.slice(a, b);
-    box.setRangeText(mark + picked + mark, a, b, "end");
+    box.setRangeText(mark + picked + end, a, b, "end");
     if (!picked) box.setSelectionRange(a + 1, a + 1); // 빈칸이면 커서를 기호 사이로
     box.focus();
   };
