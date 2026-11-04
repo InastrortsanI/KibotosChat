@@ -102,7 +102,7 @@ def _student_block(s: dict, bond: Bond | None) -> str:
         lines.append(f"  · 주의: {s['name']}의 존댓말은 선생님(과 윗사람)에게만 씁니다. {casual}에게는 반드시 반말로 말하고, 괄호 안 표기 그대로 부릅니다.")
     formal = next((g[4:].strip() for g in (s.get("peers") or "").split(" / ") if g.startswith("존댓말:")), "")
     if formal:
-        lines.append(f"  · 주의: {s['name']}는 {formal}에게도 존댓말을 씁니다. 친해도 반말로 바꾸지 않습니다.")
+        lines.append(f"  · 주의: {s['name']}는 {formal}에게도 존댓말을 씁니다. 친해도 반말로 바꾸지 않고, '너·네가·너는'이라고 부르지 않고 이름으로 부릅니다.")
     if s.get("detail") == "basic":
         lines.append("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)")
     if bond:

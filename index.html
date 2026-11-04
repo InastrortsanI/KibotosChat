@@ -532,6 +532,20 @@ function splitSpeaker(raw) {
 const YOU_FORMS = [["네가", "이"], ["너는", "은"], ["넌", "은"], ["너도", "도"], ["너를", "을"], ["널", "을"], ["너한테", "한테"], ["너에게", "께"], ["너랑", "이랑"], ["너의", "의"], ["너만", "만"]];
 function politeYou(said, call) {
   for (const [you, josa] of YOU_FORMS) said = said.replace(new RegExp(`(^|[\\s,.!?…~"“(])${you}(?=[\\s,.!?…~"”)]|$)`, "g"), `$1${call}${josa}`);
+  return said.replace(new RegExp(`${call}\\s*,\\s*(${call}[가-힣]{0,2}\\s)`, "g"), "$1"); // '선생님, 선생님은' → '선생님은'
+}
+// 존댓말로 대하는 친구(예: 케이 → 아리스)를 '너'라고 부르면 그 친구의 이름으로 바꾼다. 받침에 따라 조사를 고른다.
+const hasBatchim = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 !== 0; };
+const PEER_YOU = [["네가", "이", "가"], ["너는", "은", "는"], ["넌", "은", "는"], ["너도", "도", "도"], ["너를", "을", "를"], ["널", "을", "를"],
+  ["너한테", "한테", "한테"], ["너에게", "에게", "에게"], ["너랑", "이랑", "랑"], ["너의", "의", "의"], ["너만", "만", "만"], ["너", "", ""]];
+function peerYou(said, st) {
+  for (const p of casualPeers(st, "존댓말")) {
+    if (!said.includes(p.call)) continue; // 그 친구를 부르는 대사일 때만
+    const name = p.call, b = hasBatchim(name);
+    for (const [you, j1, j2] of PEER_YOU)
+      said = said.replace(new RegExp(`(^|[\\s,.!?…~"“(])${you}(?=[\\s,.!?…~"”)]|$)`, "g"), `$1${name}${b ? j1 : j2}`);
+    said = said.replace(new RegExp(`${name}\\s*,\\s*(${name}[가-힣]{0,2}\\s)`, "g"), "$1"); // '아리스, 아리스는' → '아리스는'
+  }
   return said;
 }
 function koreanizeNames(text) {
@@ -546,6 +560,7 @@ function koreanizeNames(text) {
     if (call === "선생") said = said.replace(/선생님/g, "선생"); // 호시노·카요코 등은 공식 대사에서 항상 '선생'
     if ((st.honorific || "존댓말").startsWith("존댓말") && said.includes(call)) said = politeYou(said, call);
     said = fixPeerRegister(said, st);
+    said = peerYou(said, st);
     said = dropTagQuestion(said);
     if (st.honorific === "반말") said = toSensei(said, call); // 반말 학생이 선생님에게 '…데요?' 하면 반말로
     return st.name + (emo ? ` [${emo}]` : "") + m[2] + said;
@@ -790,7 +805,7 @@ function peerWarning(s, onlyNames) {
   const casual = polite ? pick("반말") : [], formal = pick("존댓말");
   if (casual.length) out.push(`${s.name}의 존댓말은 선생님(과 윗사람)에게만 씁니다. ${list(casual)}에게는 반드시 반말로 말하고, 부를 때도 괄호 안 표기 그대로 부릅니다(직함으로 바꾸지 않음). ` +
     `예) '${casual[0].call}, 이것 좀 봐.' (O) / '${casual[0].call}, 이것 좀 보세요.' (X)`);
-  if (formal.length) out.push(`${s.name}는 ${list(formal)}에게도 존댓말을 씁니다. 친해도 반말로 바꾸지 않습니다. ` +
+  if (formal.length) out.push(`${s.name}는 ${list(formal)}에게도 존댓말을 씁니다. 친해도 반말로 바꾸지 않고, '너·네가·너는'이라고 부르지 않고 이름으로 부릅니다. ` +
     `예) '${formal[0].call}, 괜찮아요?' (O) / '${formal[0].call}, 괜찮아?' (X)`);
   return out.join(" ");
 }
