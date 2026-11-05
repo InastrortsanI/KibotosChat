@@ -80,6 +80,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .chat-preview { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .small { font-size: .76rem; }
 .chat-del { position: absolute; top: .4rem; right: .4rem; }
+.chat-ren { position: absolute; top: 2.3rem; right: .4rem; font-size: .85rem; }
 .side-title { display: flex; align-items: baseline; justify-content: space-between; }
 .side-more { font-size: .78rem; font-weight: 400; }
 .room-group > details > summary { list-style: none; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--school); padding: .45rem .4rem .2rem; display: flex; align-items: center; gap: .35rem; }
@@ -280,7 +281,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
   .scenarios h2 { font-size: 1.1rem; }
 
   .chat-head { display: none; } /* 세로 공간이 부족해 대화 정보 줄은 숨기고, 삭제 버튼은 위쪽 바로 옮긴다 */
-  .cover-only:not([hidden]) { display: inline-block; margin-left: auto; }
+  .cover-only:not([hidden]) { display: inline-block; }
+  #cover-rename:not([hidden]) { margin-left: auto; }
   .chat-title p { font-size: .76rem; }
   .chat-head select { max-width: 78px; font-size: .78rem; padding: .25rem .35rem; }
   .messages { padding: .7rem 10px; gap: .8rem; }
@@ -358,6 +360,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
     <header class="topbar">
       <button class="icon-btn" id="open-sidebar" aria-label="메뉴 열기">☰</button>
       <span class="brand small" id="topbar-title">키보토스 채팅</span>
+      <button class="icon-btn cover-only" id="cover-rename" aria-label="대화 이름 바꾸기" title="대화 이름 바꾸기" hidden>✏️</button>
       <button class="icon-btn cover-only" id="cover-delete" aria-label="대화 삭제" title="대화 삭제" hidden>🗑</button>
     </header>
 
@@ -414,6 +417,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
           <option value="quick">빠르게</option>
           <option value="complex">깊이 있게</option>
         </select>
+        <button class="icon-btn" id="rename-room" aria-label="대화 이름 바꾸기" title="대화 이름 바꾸기">✏️</button>
         <button class="icon-btn" id="delete-room" aria-label="대화 삭제" title="대화 삭제">🗑</button>
       </header>
       <div class="messages-wrap">
@@ -1207,7 +1211,7 @@ function showView(name) {
   if (name === "chats") renderChatsView();
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === name));
   $("#sidebar").classList.remove("open");
-  if (name !== "chat") { state.ctl?.abort(); state.room = null; $("#topbar-title").textContent = "키보토스 채팅"; $("#cover-delete").hidden = true; renderRooms(); }
+  if (name !== "chat") { state.ctl?.abort(); state.room = null; $("#topbar-title").textContent = "키보토스 채팅"; $("#cover-delete").hidden = true; $("#cover-rename").hidden = true; renderRooms(); }
 }
 document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => showView(t.dataset.view)));
 $("#open-sidebar").onclick = () => $("#sidebar").classList.add("open");
@@ -1237,6 +1241,7 @@ function renderRoster() {
 function openSheet() { const d = $("#sheet"); d.showModal(); d.scrollTop = 0; $("#sheet-body").scrollTop = 0; }
 $("#search").oninput = renderRoster;
 $("#cover-delete").onclick = () => $("#delete-room").click();
+$("#cover-rename").onclick = () => $("#rename-room").click();
 // 커버 화면처럼 작은 화면에서는 입력창 안내문을 짧게
 const COVER = matchMedia("(max-width: 560px) and (max-height: 560px)");
 const setPlaceholder = () => { $("#input").placeholder = COVER.matches ? "대사 또는 *행동*" : "대사를 쓰거나 *행동*을 별표로 감싸 쓰세요"; };
@@ -1424,10 +1429,12 @@ function renderChatsView() {
               ${studs.length ? `<span class="muted small">학생: ${esc(studs.map((s) => s.name).join(", "))}${r.student_list.length > studs.length ? " 외" : ""}</span>` : ""}
               ${r.preview ? `<span class="chat-preview">“${esc(r.preview)}”</span>` : ""}
               <span class="muted small">메시지 ${r.count || "?"}개 · 마지막 대화 ${full(r.updated_at)}${r.created_at && full(r.created_at) !== full(r.updated_at) ? ` · 시작 ${full(r.created_at)}` : ""}</span></span></button>
+          <button class="icon-btn chat-ren" data-ren="${r.id}" aria-label="'${esc(r.title)}' 이름 바꾸기" title="이름 바꾸기">✏️</button>
           <button class="icon-btn chat-del" data-del="${r.id}" aria-label="'${esc(r.title)}' 삭제" title="삭제">🗑</button></li>`;
       }).join("") + `</ul></section>`;
   }).join("");
   $("#chat-groups").querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => openRoom(b.dataset.id)));
+  $("#chat-groups").querySelectorAll("[data-ren]").forEach((b) => (b.onclick = () => renameRoom(b.dataset.ren)));
   $("#chat-groups").querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => confirmDelete(state.rooms.find((r) => r.id === b.dataset.del), () => { renderRooms(); renderChatsView(); })));
 }
 $("#open-chats").onclick = () => showView("chats");
@@ -1539,7 +1546,7 @@ function renderChatHead() {
   $("#chat-halos").innerHTML = studs.slice(0, 4).map((s) => halo(s, "big", wearOf(s.id, room))).join("");
   $("#chat-title").textContent = room.title;
   $("#topbar-title").textContent = room.title;
-  $("#cover-delete").hidden = false;
+  $("#cover-delete").hidden = false; $("#cover-rename").hidden = false;
   let sub;
   if (room.mode === "single" && studs[0]) sub = `${stageOf(bondOf(studs[0].id).affection).name} · 호감도 ${bondOf(studs[0].id).affection}`;
   else sub = [scene?.place, scene?.time].filter(Boolean).join(" · ") + (studs.length ? ` — ${studs.map((s) => `${s.name} ${bondOf(s.id).affection}`).join(", ")}` : "");
@@ -1785,6 +1792,33 @@ $("#btn-undo").onclick = async () => {
   await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
 };
 // 브라우저 confirm()은 이 화면에서 동작하지 않아서 시트로 확인한다.
+// 대화 이름 바꾸기: 지금 연 방이면 그대로, 목록에서 고른 방이면 저장소에서 불러와 바꾼다.
+$("#rename-room").onclick = () => { if (state.room) renameRoom(state.room.id); };
+async function renameRoom(id) {
+  const meta = state.rooms.find((r) => r.id === id); if (!meta) return;
+  $("#sheet-body").innerHTML = `<h2>대화 이름 바꾸기</h2>
+    <label for="f-title">새 이름<input id="f-title" name="title" maxlength="40" value="${esc(meta.title)}" required></label>
+    <div class="sheet-actions"><button class="btn ghost" value="cancel">취소</button><button class="btn primary" id="confirm-rename">저장</button></div>`;
+  $("#confirm-rename").onclick = async (e) => {
+    e.preventDefault();
+    const title = $("#f-title").value.trim().slice(0, 40);
+    if (!title) return $("#f-title").focus();
+    $("#sheet").close();
+    const room = state.room?.id === id ? state.room : await store.get("room-" + id);
+    if (!room) return toast("대화를 불러오지 못했습니다.");
+    room.title = title;
+    const keepTime = room.updated_at; // 이름만 바꾼 것으로 '최근 대화' 순서가 바뀌지 않게
+    await saveRoom(room);
+    meta.title = title; room.updated_at = keepTime;
+    state.rooms = state.rooms.map((r) => (r.id === id ? { ...r, title, updated_at: keepTime } : r)).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    await store.set("roomindex", { rooms: state.rooms });
+    if (state.room?.id === id) { await store.set("room-" + id, room); renderChatHead(); }
+    renderRooms(); if (!$("#view-chats").hidden) renderChatsView();
+    toast("대화 이름을 바꿨습니다.");
+  };
+  openSheet();
+  setTimeout(() => { const f = $("#f-title"); f?.focus(); f?.select(); }, 50);
+}
 $("#delete-room").onclick = () => { if (state.room) confirmDelete(state.room, () => showView("roster")); };
 function confirmDelete(room, after) {
   $("#sheet-body").innerHTML = `<h2>대화 삭제</h2><p>'${esc(room.title)}' 대화를 삭제할까요? 되돌릴 수 없습니다. 학생들의 호감도와 기억은 그대로 남습니다.</p>
