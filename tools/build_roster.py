@@ -121,6 +121,10 @@ APPEARANCE = ROOT / "tools" / "appearance.json"  # 외모 요약 (직접 작성)
 PEERS = ROOT / "tools" / "peers.json"            # 학생 간 말투 (tools/build_peers.py 가 시나리오에서 집계)
 # 부름말만으로는 누군지 알 수 없는 경우와, 집계에 잡히지 않았지만 대사로 확인한 경우를 손으로 보충한다.
 TITLE_WHO = {("midori", "#언니"): "모모이", ("momoi", "#언니"): None}
+# 표시 이름 바꾸기: SchaleDB의 '시로코*테러'는 별표(*)가 '행동' 표시와 겹쳐 대사·입력이 잘못 나뉜다. 게임 시나리오 표기('시로코 테러')로 쓴다.
+NAME_OVERRIDE = {"shiroko_terror": ("시로코 테러", "스나오오카미 시로코(테러)")}
+# 유저나 AI가 부를 수 있는 다른 이름. 이 이름으로 불러도 그 학생으로 알아본다.
+ALIASES = {"shiroko_terror": ["시로코*테러", "시로코＊테러", "시로코테러", "테러 시로코", "큰 시로코", "어른 시로코", "다른 세계의 시로코"]}
 PEER_EXTRA = {"midori": [["kei", "반말", "케이 쨩", 9]],  # '케이 쨩도 너무 화내지 말아 줘'
               "momoi": [["yuzu", "반말", "유즈", 9]]}     # '유즈는 어떻게 생각해?' ('유즈!'처럼 부름말만 있는 대사가 많아 집계에서 빠짐)
 
@@ -210,6 +214,11 @@ def main(db_path: str) -> None:
                  "birthday": birthday, "outfits": EXTRA_OUTFITS.get(sid, [])}
         roster.append(apply_persona(entry, personas.get(sid)))
 
+    for e in roster:
+        if e["id"] in NAME_OVERRIDE:
+            e["name"], e["full_name"] = NAME_OVERRIDE[e["id"]]
+        if e["id"] in ALIASES:
+            e["aliases"] = ALIASES[e["id"]]
     names = {e["id"]: e["name"] for e in roster}
     for e in roster:
         if looks.get(e["id"]):

@@ -498,8 +498,15 @@ const artImg = (st) => (IN_CLAUDE || !prefs.photos || !(st.art || st.art_url)) ?
       data-fb="${st.art_url && st.art ? ART_URL + st.art + ".webp" : ""}" onerror="if (this.dataset.fb) { this.src = this.dataset.fb; this.dataset.fb = ''; } else this.remove()">`;
 // ↑ 기본 의상 초상(art_url)을 못 불러오면 SchaleDB 아이콘(art)으로, 그것도 안 되면 이미지를 지워 이니셜을 보인다.
 // AI가 대사 이름을 한국어 대신 id나 영어(Hikari, Tachibana Hikari)로 쓸 때도 학생을 찾는다.
+// 별명(예: '큰 시로코', '시로코*테러')을 표시 이름으로 바꾼다. 긴 별명부터 바꿔서 '시로코'만 남는 일이 없게 한다.
+let ALIAS_LIST = null;
+function canonNames(text) {
+  if (!ALIAS_LIST) ALIAS_LIST = Object.values(state.students).flatMap((s) => (s.aliases || []).map((a) => [a, s.name])).sort((a, b) => b[0].length - a[0].length);
+  for (const [a, name] of ALIAS_LIST) text = text.split(a).join(name);
+  return text;
+}
 function findStudentByName(name) {
-  const n = name.trim();
+  const n = canonNames(name.trim());
   const hit = Object.values(state.students).find((s) => s.name === n || s.full_name === n);
   if (hit) return hit;
   const k = n.toLowerCase().replace(/[^a-z_ ]/g, "").trim();
@@ -541,7 +548,7 @@ function peerYou(said, st) {
   return said;
 }
 function koreanizeNames(text) {
-  return text.split("\n").map((line) => {
+  return canonNames(text).split("\n").map((line) => {
     const m = line.match(/^\s*([^:："*]{1,40}?)\s*([:：]\s*["“])(.*)$/);
     if (!m) return line.replace(WRONG_CALL_NARR, "선생님");
     const { who, emo } = splitSpeaker(m[1]);
@@ -811,6 +818,7 @@ function studentBlock(s) {
   const L = [`- ${s.name} (id: ${s.id})`, `  · 본명: ${s.full_name} / ${sc.name} ${s.year || ""} / 소속: ${s.club || "없음"}`,
     `  · 선생님에게: ${honorificRule(s.honorific)}`,
     `  · 선생님 호칭: '${s.call || "선생님"}' (이 표기 그대로. 선상님·쌤·센세 등으로 바꾸지 말 것)`];
+  if (s.aliases?.length) L.push(`  · 다른 이름: ${s.aliases.filter((a) => !/[*＊]/.test(a)).join(", ")} (유저가 이렇게 불러도 이 학생이다. 대사 앞 이름은 '${s.name}'로 쓴다)`);
   for (const [label, k] of [["나이", "age"], ["생일", "birthday"], ["키", "height"], ["취미", "hobby"], ["무기", "weapon"],
     ["외모", "appearance"], ["성격", "personality"], ["말투", "speech"], ["다른 학생에게 (게임 대사 기준)", "peers"],
     ["선생님을 대하는 태도", "sensei"], ["인간관계", "relations"], ["배경·스토리", "story"]])
@@ -847,8 +855,10 @@ function speakersIn(messages) {
 // (예전에는 장면 태그와 '최근 2개 메시지'만 봐서, AI가 태그를 빠뜨리면 말하고 있는 학생의 프로필이 빠져 성격이 뒤바뀌었다)
 function focusStudents(room) {
   const ids = [...(currentScene(room)?.present || []), ...speakersIn(room.messages.slice(-6)), ...room.student_list];
-  const recent = room.messages.slice(-2).map((m) => m.content).join("\n");
-  for (const s of Object.values(state.students)) if (s.name.length >= 2 && recent.includes(s.name)) ids.push(s.id);
+  let recent = canonNames(room.messages.slice(-2).map((m) => m.content).join("\n"));
+  // 긴 이름부터 찾고 지워 나가서, '시로코 테러' 안의 '시로코'를 시로코로 착각하지 않게 한다
+  for (const s of Object.values(state.students).sort((a, b) => b.name.length - a.name.length))
+    if (s.name.length >= 2 && recent.includes(s.name)) { ids.push(s.id); recent = recent.split(s.name).join(" "); }
   return [...new Set(ids)].filter((i) => state.students[i]).slice(0, 10).map((i) => state.students[i]);
 }
 
@@ -875,7 +885,7 @@ function rosterDigest() {
   return Object.values(state.students).filter((s) => s.school !== "Shittim").map((s) => {
     const speech = (s.speech || "").split(/[.。]/)[0].slice(0, 50);
     const trait = (s.personality || "").split(/[.。]/).slice(1, 2).join("").trim().slice(0, 45); // 첫 문장(소속 소개) 다음 문장 = 성격 핵심
-    return `${s.id}|${s.name}|${schoolOf(s).name}|${s.club || "무소속"}|선생님에게 ${s.honorific || "존댓말"}|호칭 '${s.call || "선생님"}'|${speech}${trait ? "|" + trait : ""}|외모: ${looksShort(s, 70) || "미확인"}`;
+    return `${s.id}|${s.name}${s.aliases ? "(=" + s.aliases.filter((a) => !/[*＊]/.test(a)).slice(0, 3).join("/") + ")" : ""}|${schoolOf(s).name}|${s.club || "무소속"}|선생님에게 ${s.honorific || "존댓말"}|호칭 '${s.call || "선생님"}'|${speech}${trait ? "|" + trait : ""}|외모: ${looksShort(s, 70) || "미확인"}`;
   }).join("\n");
 }
 
@@ -936,6 +946,7 @@ ${rosterDigest()}`);
 // 예) '"가자." *가방을 챙긴다*' → '[선생님의 말] "가자."\n[선생님의 행동] 가방을 챙긴다'
 // 표시가 하나도 없으면 그대로 두고 AI가 문맥으로 판단하게 한다. 화면·저장 내용은 바뀌지 않는다.
 function labelUserInput(text) {
+  text = canonNames(text);
   if (!/[*"“”(（]/.test(text)) return text;
   const out = [];
   // *행동*(닫는 별표가 없으면 끝까지), "말", (연출 지시), 그 밖의 글자 덩어리 순서대로 자른다
@@ -1574,7 +1585,7 @@ async function runTurn(kind) {
 $("#composer").onsubmit = async (e) => {
   e.preventDefault();
   if (state.busy) { state.ctl?.abort(); return; } // 응답 중에는 '멈추기' 버튼
-  const text = $("#input").value.trim();
+  const text = canonNames($("#input").value.trim()); // '시로코*테러'의 별표가 행동 표시로 읽히지 않게 이름부터 바꾼다
   if (!text || !state.room) return;
   $("#input").value = "";
   state.room.messages.push({ role: "user", content: text, affection: {} });
