@@ -3,7 +3,7 @@
 「블루 아카이브」 세계관에서 샬레의 선생님이 되어 학생들과 대화하는 AI 롤플레이 웹사이트입니다.
 비상업 개인 포트폴리오용 팬 프로젝트이며, 저장소에는 게임의 이미지·로고·원문 대사가 들어 있지 않습니다.
 학생 얼굴 아이콘은 팬 데이터베이스 [SchaleDB](https://schaledb.com)의 이미지를 링크로 불러와 표시합니다(GitHub Pages 버전만, 불러오지 못하면 이니셜 표시). 총학생회·NPC 학생 초상은 [BA-L10N-Viewer](https://github.com/BA-L10N-Viewer/viewer_site)의 공개 CDN을 링크합니다.
-「블루 아카이브」와 모든 캐릭터 일러스트의 저작권은 NEXON Games / Yostar에 있습니다.
+「블루 아카이브」와 모든 캐릭터 일러스트의 저작권은 NEXON Games에 있습니다.
 
 **바로 플레이: https://inastrortsani.github.io/KibotosChat/**
 메뉴 아래쪽 'AI 설정'에 본인의 AI API 키(Gemini, Claude, OpenAI 중 하나)를 넣으면 시작할 수 있습니다.
