@@ -62,6 +62,26 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .room-list button { width: 100%; text-align: left; border: 0; background: none; padding: .5rem .6rem; border-radius: var(--radius-sm); cursor: pointer; font: inherit; color: inherit; display: grid; }
 .room-list button:hover, .room-list button.active { background: var(--bg); }
 .room-meta { font-size: .78rem; color: var(--ink-soft); }
+.chat-tools { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .4rem; }
+.chat-tools .chips { margin: 0; }
+.chat-tools select { width: auto; flex: none; font: inherit; font-size: .88rem; padding: .3rem .5rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--paper); color: var(--ink); }
+.chat-group h2 { font-size: 1rem; color: var(--school); margin: 1.1rem 0 .5rem; }
+.chat-group .count { color: var(--ink-soft); font-weight: 400; font-size: .85rem; }
+.chat-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: .5rem; }
+.chat-card { position: relative; }
+.chat-open { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: .7rem; align-items: start; text-align: left; font: inherit; color: inherit; background: var(--paper);
+  border: 0; border-left: 4px solid var(--school); border-radius: var(--radius-sm); padding: .7rem 2.6rem .7rem .8rem; cursor: pointer; }
+.chat-open:hover { background: var(--hover); }
+.chat-open .room-faces .halo { --size: 40px; }
+.chat-open .room-faces .halo + .halo { margin-left: -16px; }
+.chat-body { display: grid; gap: .2rem; min-width: 0; }
+.chat-tags { display: flex; flex-wrap: wrap; gap: .25rem; }
+.chat-tags span { font-size: .72rem; padding: .05rem .45rem; border-radius: 999px; background: var(--bg); color: var(--ink-soft); }
+.chat-preview { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.small { font-size: .76rem; }
+.chat-del { position: absolute; top: .4rem; right: .4rem; }
+.side-title { display: flex; align-items: baseline; justify-content: space-between; }
+.side-more { font-size: .78rem; font-weight: 400; }
 .room-group > details > summary { list-style: none; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--school); padding: .45rem .4rem .2rem; display: flex; align-items: center; gap: .35rem; }
 .room-group > details > summary::-webkit-details-marker { display: none; }
 .room-group > details > summary::before { content: "▾"; font-size: .7rem; transition: transform .15s; }
@@ -322,8 +342,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
       <button data-view="roster" class="tab active">학생 명부</button>
       <button data-view="stories" class="tab">스토리</button>
       <button data-view="world" class="tab">세계관</button>
+      <button data-view="chats" class="tab">내 대화 모아보기</button>
     </nav>
-    <h2 class="side-title">내 대화</h2>
+    <h2 class="side-title">내 대화 <button class="btn link side-more" id="open-chats">자세히 보기</button></h2>
     <ul id="room-list" class="room-list"><li class="empty">대화 목록을 불러오는 중…</li></ul>
     <div class="sidebar-foot">
       <div class="row"><span class="muted">테마 · 프로필 사진</span><button class="btn link" id="open-prefs">설정</button></div>
@@ -348,6 +369,23 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
       <div id="school-filter" class="chips" role="group" aria-label="학교 필터"></div>
       <select id="school-select" class="cover-select" aria-label="학교 필터"></select>
       <ul id="roster" class="roster"></ul>
+    </section>
+
+    <section id="view-chats" class="view" hidden>
+      <div class="view-head">
+        <h1>내 대화</h1>
+        <input id="chat-search" type="search" placeholder="제목, 학생, 대사로 찾기" aria-label="대화 검색">
+      </div>
+      <div class="chat-tools">
+        <div id="chat-mode" class="chips" role="group" aria-label="종류"></div>
+        <select id="chat-school" aria-label="학원"></select>
+        <select id="chat-sort" aria-label="정렬">
+          <option value="recent">최근에 대화한 순</option><option value="old">오래된 순</option>
+          <option value="count">메시지 많은 순</option><option value="title">이름순</option>
+        </select>
+      </div>
+      <p id="chat-summary" class="muted"></p>
+      <div id="chat-groups"></div>
     </section>
 
     <section id="view-free" class="view" hidden>
@@ -1154,8 +1192,9 @@ async function saveRoom(room) {
   room.updated_at = nowIso();
   const last = [...room.messages].reverse().find((m) => m.role === "assistant" || m.role === "user");
   const preview = (last?.content || "").split("\n").map((l) => l.replace(/^\*|\*$/g, "").replace(/^\s*([^:："]{1,28}?)\s*(?:\[[^\]]*\])?\s*[:：]\s*["“]/, "$1: ").replace(/["”]\s*$/, "").trim()).filter(Boolean).at(-1) || "";
-  const meta = { id: room.id, title: room.title, mode: room.mode, student_list: room.mode === "free" ? (room.met || []) : room.student_list, updated_at: room.updated_at,
-    count: room.messages.length, preview: preview.slice(0, 60), place: room.mode === "free" ? (currentScene(room)?.place || "") : "", outfit: room.outfit || "" };
+  room.created_at = room.created_at || room.updated_at;
+  const meta = { id: room.id, title: room.title, mode: room.mode, created_at: room.created_at, scenario_id: room.scenario_id || "", student_list: room.mode === "free" ? (room.met || []) : room.student_list, updated_at: room.updated_at,
+    count: room.messages.length, preview: preview.slice(0, 60), place: room.mode === "free" ? (currentScene(room)?.place || "") : "", outfit: room.mode === "single" ? wearOf(room.student_list[0], room) : "" };
   state.rooms = [meta, ...state.rooms.filter((r) => r.id !== room.id)];
   renderRooms();
   await store.set("room-" + room.id, room);
@@ -1164,7 +1203,8 @@ async function saveRoom(room) {
 
 // ───────── 화면 전환 ─────────
 function showView(name) {
-  for (const v of ["free", "roster", "stories", "world", "chat"]) $(`#view-${v}`).hidden = v !== name;
+  for (const v of ["free", "roster", "stories", "world", "chats", "chat"]) $(`#view-${v}`).hidden = v !== name;
+  if (name === "chats") renderChatsView();
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === name));
   $("#sidebar").classList.remove("open");
   if (name !== "chat") { state.ctl?.abort(); state.room = null; $("#topbar-title").textContent = "키보토스 채팅"; $("#cover-delete").hidden = true; renderRooms(); }
@@ -1345,6 +1385,56 @@ $("#open-settings").onclick = () => {
 };
 
 // ───────── 대화방 목록 ─────────
+// ───────── 내 대화 모아보기: 종류·학원으로 거르고, 검색·정렬하고, 학원별로 묶어 자세히 본다 ─────────
+const chatView = { mode: "", school: "", sort: "recent", q: "" };
+function renderChatsView() {
+  const modes = [["", "전체"], ["single", "1:1"], ["free", "자유 모드"], ["story", "스토리"]];
+  const count = (m) => state.rooms.filter((r) => !m || r.mode === m).length;
+  $("#chat-mode").innerHTML = modes.map(([v, l]) => `<button class="chip" data-v="${v}" aria-pressed="${chatView.mode === v}">${l} ${count(v)}</button>`).join("");
+  $("#chat-mode").querySelectorAll(".chip").forEach((c) => (c.onclick = () => { chatView.mode = c.dataset.v; renderChatsView(); }));
+  const used = new Set(state.rooms.map((r) => roomGroup(r)[0]));
+  $("#chat-school").innerHTML = `<option value="">모든 학원</option>` + [...Object.entries(state.schools).filter(([k]) => used.has(k)).map(([k, s]) => [k, s.name]),
+    ...[["free", "자유 모드"], ["story", "스토리"]].filter(([k]) => used.has(k))].map(([k, n]) => `<option value="${k}" ${chatView.school === k ? "selected" : ""}>${esc(n)}</option>`).join("");
+  $("#chat-sort").value = chatView.sort;
+  const q = chatView.q.trim();
+  const names = (r) => r.student_list.map((i) => state.students[i]?.name || "").join(" ");
+  let list = state.rooms.filter((r) => (!chatView.mode || r.mode === chatView.mode) && (!chatView.school || roomGroup(r)[0] === chatView.school)
+    && (!q || [r.title, names(r), r.preview || "", r.place || "", r.outfit || ""].join(" ").includes(q)));
+  const sorters = { recent: (a, b) => b.updated_at.localeCompare(a.updated_at), old: (a, b) => a.updated_at.localeCompare(b.updated_at),
+    count: (a, b) => (b.count || 0) - (a.count || 0), title: (a, b) => a.title.localeCompare(b.title, "ko") };
+  list = list.sort(sorters[chatView.sort]);
+  const total = list.reduce((n, r) => n + (r.count || 0), 0);
+  $("#chat-summary").textContent = state.rooms.length ? `대화 ${list.length}개 · 메시지 ${total}개` : "";
+  if (!list.length) { $("#chat-groups").innerHTML = `<p class="empty">${state.rooms.length ? "조건에 맞는 대화가 없습니다." : "아직 대화가 없습니다. 학생 명부에서 학생을 골라 보세요."}</p>`; return; }
+  const order = [...Object.keys(state.schools), "free", "story", "etc"], groups = new Map();
+  for (const r of list) { const [k, label] = roomGroup(r); if (!groups.has(k)) groups.set(k, { label, rooms: [] }); groups.get(k).rooms.push(r); }
+  const full = (iso) => iso ? new Date(iso).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  $("#chat-groups").innerHTML = [...groups.keys()].sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((k) => {
+    const g = groups.get(k);
+    return `<section class="chat-group" style="--school:${state.schools[k]?.color || "var(--ink-soft)"}"><h2>${esc(g.label)} <span class="count">${g.rooms.length}</span></h2><ul class="chat-cards">` +
+      g.rooms.map((r) => {
+        const studs = r.student_list.map((i) => state.students[i]).filter(Boolean);
+        const kind = { single: "1:1 대화", free: "자유 모드", story: "스토리" }[r.mode];
+        const one = r.mode === "single" && studs[0] ? stageOf(bondOf(studs[0].id).affection) : null;
+        const tags = [kind, r.outfit && `차림: ${r.outfit}`, r.place && `장소: ${r.place}`, one && `${one.name} · 호감도 ${bondOf(studs[0].id).affection}`].filter(Boolean);
+        return `<li class="chat-card"><button class="chat-open" data-id="${r.id}">
+            <span class="room-faces">${studs.slice(0, 4).map((s) => halo(s, "", r.mode === "single" ? r.outfit || "" : "")).join("") || '<span class="halo"><span class="face">?</span></span>'}</span>
+            <span class="chat-body"><b>${esc(r.title)}</b>
+              <span class="chat-tags">${tags.map((x) => `<span>${esc(x)}</span>`).join("")}</span>
+              ${studs.length ? `<span class="muted small">학생: ${esc(studs.map((s) => s.name).join(", "))}${r.student_list.length > studs.length ? " 외" : ""}</span>` : ""}
+              ${r.preview ? `<span class="chat-preview">“${esc(r.preview)}”</span>` : ""}
+              <span class="muted small">메시지 ${r.count || "?"}개 · 마지막 대화 ${full(r.updated_at)}${r.created_at && full(r.created_at) !== full(r.updated_at) ? ` · 시작 ${full(r.created_at)}` : ""}</span></span></button>
+          <button class="icon-btn chat-del" data-del="${r.id}" aria-label="'${esc(r.title)}' 삭제" title="삭제">🗑</button></li>`;
+      }).join("") + `</ul></section>`;
+  }).join("");
+  $("#chat-groups").querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => openRoom(b.dataset.id)));
+  $("#chat-groups").querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => confirmDelete(state.rooms.find((r) => r.id === b.dataset.del), () => { renderRooms(); renderChatsView(); })));
+}
+$("#open-chats").onclick = () => showView("chats");
+$("#chat-search").oninput = (e) => { chatView.q = e.target.value; renderChatsView(); };
+$("#chat-school").onchange = (e) => { chatView.school = e.target.value; renderChatsView(); };
+$("#chat-sort").onchange = (e) => { chatView.sort = e.target.value; renderChatsView(); };
+
 // 대화 목록: 학원별로 묶고(1:1은 학생의 학원, 스토리·자유 모드는 따로), 학생 얼굴·마지막 대사·시간·메시지 수를 보여 준다.
 let collapsedGroups = new Set();
 try { collapsedGroups = new Set(JSON.parse(localStorage.getItem("kivotos-collapsed") || "[]")); } catch {}
@@ -1695,20 +1785,20 @@ $("#btn-undo").onclick = async () => {
   await Promise.all([saveRoom(room), store.set("bonds", { bonds: state.bonds })]);
 };
 // 브라우저 confirm()은 이 화면에서 동작하지 않아서 시트로 확인한다.
-$("#delete-room").onclick = () => {
-  const room = state.room; if (!room) return;
+$("#delete-room").onclick = () => { if (state.room) confirmDelete(state.room, () => showView("roster")); };
+function confirmDelete(room, after) {
   $("#sheet-body").innerHTML = `<h2>대화 삭제</h2><p>'${esc(room.title)}' 대화를 삭제할까요? 되돌릴 수 없습니다. 학생들의 호감도와 기억은 그대로 남습니다.</p>
     <div class="sheet-actions"><button class="btn ghost" value="cancel">취소</button><button class="btn primary" id="confirm-del">삭제</button></div>`;
   $("#confirm-del").onclick = async (e) => {
     e.preventDefault(); $("#sheet").close();
     state.rooms = state.rooms.filter((r) => r.id !== room.id);
-    showView("roster");
+    after();
     await store.del("room-" + room.id);
     await store.set("roomindex", { rooms: state.rooms });
     toast("대화를 삭제했습니다.");
   };
   openSheet();
-};
+}
 
 // ───────── 직접 AI 호출 (claude.ai 밖, 예: GitHub Pages) ─────────
 // claude.ai의 sample(turns, {onText, signal})과 같은 모양으로 만들어서, 채팅 코드는 그대로 쓴다.
