@@ -177,12 +177,14 @@ def main(db_path: str) -> None:
     peers = json.loads(PEERS.read_text(encoding="utf-8")) if PEERS.exists() else {}
 
     outfits: dict[str, list[str]] = {}
+    outfit_art: dict[str, dict[str, int]] = {}  # 차림별 아이콘 id: 채팅에서 학생이 그 차림이면 프로필 사진도 바꾼다
     for s in raw:  # '아루(새해)' → 아루의 의상 목록에 '새해' 추가
         if "(" in s["Name"]:
             base_name, outfit = s["Name"].rstrip(")").split("(", 1)
             outfits.setdefault(base_name, [])
             if outfit not in outfits[base_name]:
                 outfits[base_name].append(outfit)
+                outfit_art.setdefault(base_name, {})[outfit] = s["Id"]
 
     roster = []
     for s in raw:
@@ -204,6 +206,8 @@ def main(db_path: str) -> None:
             "weapon": WEAPON.get(s["WeaponType"], s["WeaponType"]),
             "outfits": outfits.get(s["Name"], []) + EXTRA_OUTFITS.get(sid, []),
         }
+        if s["Name"] in outfit_art:
+            entry["outfit_art"] = outfit_art[s["Name"]]
         roster.append(apply_persona(entry, personas.get(sid)))
 
     known = {e["id"] for e in roster}

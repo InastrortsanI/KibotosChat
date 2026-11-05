@@ -54,7 +54,22 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .room-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; display: grid; align-content: start; gap: 2px; }
 .room-list button { width: 100%; text-align: left; border: 0; background: none; padding: .5rem .6rem; border-radius: var(--radius-sm); cursor: pointer; font: inherit; color: inherit; display: grid; }
 .room-list button:hover, .room-list button.active { background: var(--bg); }
-.room-meta { font-size: .82rem; color: var(--ink-soft); }
+.room-meta { font-size: .78rem; color: var(--ink-soft); }
+.room-group > details > summary { list-style: none; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--school); padding: .45rem .4rem .2rem; display: flex; align-items: center; gap: .35rem; }
+.room-group > details > summary::-webkit-details-marker { display: none; }
+.room-group > details > summary::before { content: "▾"; font-size: .7rem; transition: transform .15s; }
+.room-group > details:not([open]) > summary::before { transform: rotate(-90deg); }
+.room-group .count { color: var(--ink-soft); font-weight: 400; }
+.room-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.room-list button[data-id] { grid-template-columns: auto 1fr; gap: .55rem; align-items: center; }
+.room-faces { display: flex; }
+.room-faces .halo { --size: 30px; }
+.room-faces .halo + .halo { margin-left: -12px; }
+.room-main { display: grid; grid-template-columns: 1fr auto; min-width: 0; column-gap: .4rem; }
+.room-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-time { font-size: .72rem; color: var(--ink-soft); }
+.room-main .room-meta { grid-column: 1 / -1; }
+.room-preview { grid-column: 1 / -1; font-size: .78rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-foot { display: grid; gap: .2rem; border-top: 1px solid var(--line); padding-top: .6rem; font-size: .85rem; }
 .sidebar-foot .row { display: flex; justify-content: space-between; align-items: center; }
 .save-note { font-size: .8rem; color: var(--ink-soft); }
@@ -485,15 +500,23 @@ const nowIso = () => new Date().toISOString();
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const bondOf = (id) => state.bonds[id] || { affection: 20, memory: "" };
 
-function halo(st, size = "") {
+function halo(st, size = "", outfit = "") {
   const pct = state.bonds[st.id]?.affection ?? 0;
-  return `<span class="halo ${size}" data-halo="${esc(st.id)}" style="--school:${schoolOf(st).color};--pct:${pct}"><span class="ring"></span><span class="face" aria-hidden="true">${esc(st.name[0])}</span>${artImg(st)}</span>`;
+  return `<span class="halo ${size}" data-halo="${esc(st.id)}" style="--school:${schoolOf(st).color};--pct:${pct}"><span class="ring"></span><span class="face" aria-hidden="true">${esc(st.name[0])}</span>${artImg(st, outfit)}</span>`;
+}
+// 지금 대화방에서 이 학생이 입고 있는 차림: AI가 [복장] 태그로 바꾼 것 → 1:1 방을 만들 때 고른 차림 → 평상시
+function wearOf(id, room = state.room) {
+  if (!room) return "";
+  if (room.wear && id in room.wear) return room.wear[id];
+  return room.mode === "single" && room.student_list[0] === id ? room.outfit || "" : "";
 }
 // 학생 얼굴: SchaleDB의 공식 아이콘을 링크로만 불러온다(저장소에는 이미지 파일이 없음).
 // claude.ai 페이지는 외부 이미지를 막으므로 넣지 않고, 불러오기에 실패하면 이미지를 지워 이니셜이 보이게 한다.
 const ART_URL = "https://schaledb.com/images/student/icon/";
 // 총학생회 같은 NPC는 art_url(다른 공개 CDN의 초상)을 쓴다.
-const artImg = (st) => (IN_CLAUDE || !prefs.photos || !(st.art || st.art_url)) ? ""
+const artImg = (st, outfit = "") => (IN_CLAUDE || !prefs.photos || !(st.art || st.art_url)) ? ""
+  : st.outfit_art?.[outfit] // 게임에 나온 차림이면 그 차림의 아이콘
+  ? `<img class="face" src="${ART_URL + st.outfit_art[outfit]}.webp" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-fb="${st.art ? ART_URL + st.art + ".webp" : ""}" onerror="if (this.dataset.fb) { this.src = this.dataset.fb; this.dataset.fb = ''; } else this.remove()">`
   : `<img class="face" src="${st.art_url || ART_URL + st.art + ".webp"}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
       data-fb="${st.art_url && st.art ? ART_URL + st.art + ".webp" : ""}" onerror="if (this.dataset.fb) { this.src = this.dataset.fb; this.dataset.fb = ''; } else this.remove()">`;
 // ↑ 기본 의상 초상(art_url)을 못 불러오면 SchaleDB 아이콘(art)으로, 그것도 안 되면 이미지를 지워 이니셜을 보인다.
@@ -780,6 +803,7 @@ const CORE_RULES = `[당신의 역할]
     +4~+5 고민 해결, 진심 어린 격려, 위기에서 지켜 줌   0 별다른 교류 없음
     -1~-2 무관심·짓궂은 놀림   -3~-5 무례함, 약속을 어김, 상처 주는 말
     학생의 성격에 맞춰 판단하세요. 겉으로 툴툴대는 학생도 속으로 기뻤다면 호감도는 오릅니다.
+  학생이 이야기 속에서 옷을 갈아입으면, 프로필의 '게임에 나온 차림' 중 하나일 때 [복장 학생id:차림] 태그를 한 줄 더 씁니다(예: [복장 aru:새해]). 평소 옷으로 돌아오면 [복장 aru:평상시].
   예) [장면 장소: 샬레 집무실 | 시간: 늦은 오후 | 등장: yuuka, noa]
       [호감도 yuuka:+3]`;
 
@@ -813,7 +837,7 @@ function peerWarning(s, onlyNames) {
     `예) '${formal[0].call}, 괜찮아요?' (O) / '${formal[0].call}, 괜찮아?' (X)`);
   return out.join(" ");
 }
-function studentBlock(s) {
+function studentBlock(s, room = state.room) {
   const sc = schoolOf(s);
   const L = [`- ${s.name} (id: ${s.id})`, `  · 본명: ${s.full_name} / ${sc.name} ${s.year || ""} / 소속: ${s.club || "없음"}`,
     `  · 선생님에게: ${honorificRule(s.honorific)}`,
@@ -828,7 +852,8 @@ function studentBlock(s) {
   if (s.detail === "basic") L.push("  · (공개 자료가 적은 학생입니다. 위 정보와 학교·동아리 분위기 안에서 무난하게 연기하고, 과도한 설정을 지어내지 마세요.)");
   const b = bondOf(s.id), st = stageOf(b.affection);
   L.push(`  · 선생님과의 관계: ${st.name} (호감도 ${b.affection}/100) — ${st.guide} 친해져도 존댓말/반말과 말투는 바뀌지 않는다. ${STAGE_NOTE}`);
-  if (b.memory) L.push(`  · 이전 만남에서 기억하는 것: ${b.memory}`);
+  if (s.outfits?.length) L.push(`  · 게임에 나온 차림: ${s.outfits.join(", ")} (지금 입은 옷: ${wearOf(s.id, room) || "평상시 교복"})`);
+  if (b.memory && !room?.fresh) L.push(`  · 이전 만남에서 기억하는 것: ${b.memory}`); // '새 채팅'으로 연 방은 예전 대화를 이어 가지 않는다
   return L.join("\n");
 }
 
@@ -908,7 +933,7 @@ function buildSystem(room) {
   parts.push(state.profile.sensei_name ? `선생님의 이름은 '${state.profile.sensei_name}'입니다. 학생들은 대개 그냥 '선생님'이라고 부릅니다.` : "학생들은 유저를 '선생님'이라고 부릅니다.");
   const schoolIds = [...new Set(studs.map((s) => s.school))];
   parts.push("[관련 학교]\n" + schoolIds.map((id) => state.schools[id]).filter(Boolean).map((s) => `- ${s.full_name}: ${s.summary}`).join("\n"));
-  parts.push("[등장 학생 상세 프로필]\n" + (studs.length ? studs.map(studentBlock).join("\n") : "(아직 만난 학생이 없습니다)"));
+  parts.push("[등장 학생 상세 프로필]\n" + (studs.length ? studs.map((s) => studentBlock(s, room)).join("\n") : "(아직 만난 학생이 없습니다)"));
   if (room.mode === "free") {
     const place = state.world.places.find((p) => p.id === room.place_id);
     parts.push(`[자유 모드]
@@ -928,7 +953,8 @@ ${rosterDigest()}`);
   } else if (studs[0]) {
     parts.push(`[1:1 대화 모드]\n당신은 ${studs[0].name}입니다. 선생님과 단둘이 나누는 대화가 중심입니다. 필요하면 지문으로 주변 상황을 묘사할 수 있지만, 다른 학생은 꼭 필요할 때만 잠깐 등장시킵니다.`);
     if (studs[0].school === "Shittim") parts.push("[싯딤의 상자] 선생님은 지금 태블릿 '싯딤의 상자'를 보며 그 안의 OS와 대화하고 있습니다. 대화 상대는 화면 속 존재이며, 주변에 학생이 있다면 선생님이 태블릿에 혼잣말하는 것으로 보입니다.");
-    if (room.outfit) parts.push(`[현재 차림] ${room.outfit} — ${state.world.outfit_contexts[room.outfit] || ""}`);
+    const nowWear = wearOf(studs[0].id, room);
+    if (nowWear) parts.push(`[현재 차림] ${nowWear} — ${state.world.outfit_contexts[nowWear] || ""}`);
   }
   if (prefs.suggest) parts.push(SUGGEST_RULE);
   if (room.situation) parts.push(`[유저가 정한 상황 설정]\n${room.situation}`);
@@ -1034,6 +1060,7 @@ function castReminder(room) {
 // ───────── 호감도·기억 (Python app/memory.py 를 옮긴 것) ─────────
 const TAG = /\[호감도\s+([\w*]+)\s*:\s*([+-]?\d+)\]/g;
 const SCENE_TAG = /\[장면\s+([^\]]*)\]/g;
+const WEAR_TAG = /\[복장\s+([\w*]+)\s*[:：]\s*([^\]]*)\]/g; // [복장 학생id:차림] — 학생이 옷을 갈아입었을 때
 const SUGGEST_TAG = /\[추천(?:\s*답변)?\s*[:：]\s*([^\]]*)\]/g;
 
 // 응답에서 내부 태그를 떼어 내고 {보이는 글, 호감도 변화, 장면}을 돌려준다.
@@ -1058,10 +1085,15 @@ function parseReply(raw) {
   let suggest = [];
   for (const [, body] of raw.matchAll(SUGGEST_TAG))
     suggest = body.split("|").map((x) => koreanizeNames(x.trim().replace(/^["“”]+|["“”]+$/g, ""))).filter((x) => x && x.length <= 60 && soundsLikeSensei(x)).slice(0, 3);
-  return { text: koreanizeNames(raw.replace(TAG, "").replace(SCENE_TAG, "").replace(SUGGEST_TAG, "").trim()), changes, scene, suggest };
+  const wear = {};
+  for (const [, sid, o] of raw.matchAll(WEAR_TAG)) {
+    const st = state.students[sid.toLowerCase()], name = o.trim();
+    if (st) wear[st.id] = /^(평상시|교복|기본)$/.test(name) ? "" : name;
+  }
+  return { text: koreanizeNames(raw.replace(TAG, "").replace(SCENE_TAG, "").replace(SUGGEST_TAG, "").replace(WEAR_TAG, "").trim()), changes, scene, suggest, wear };
 }
 // 스트리밍 중에는 반쯤 쓰인 태그(끝부분의 '[호감도…', '[장면…')도 숨긴다.
-const visibleText = (t) => koreanizeNames(t.replace(TAG, "").replace(SCENE_TAG, "").replace(SUGGEST_TAG, "").replace(/\[[^\]\n]{0,200}$/, "").trim());
+const visibleText = (t) => koreanizeNames(t.replace(TAG, "").replace(SCENE_TAG, "").replace(SUGGEST_TAG, "").replace(WEAR_TAG, "").replace(/\[[^\]\n]{0,200}$/, "").trim());
 
 // 명부에 있는 학생이라면 누구든 호감도가 반영된다 (자유 모드에서 새로 만난 학생 포함).
 function applyAffection(room, changes, sign = 1) {
@@ -1111,7 +1143,10 @@ async function saveRoom(room) {
   const drop = Math.min(Math.max(0, room.messages.length - MAX_STORED), room.summarized_count);
   if (drop) { room.messages.splice(0, drop); room.summarized_count -= drop; }
   room.updated_at = nowIso();
-  const meta = { id: room.id, title: room.title, mode: room.mode, student_list: room.mode === "free" ? (room.met || []) : room.student_list, updated_at: room.updated_at };
+  const last = [...room.messages].reverse().find((m) => m.role === "assistant" || m.role === "user");
+  const preview = (last?.content || "").split("\n").map((l) => l.replace(/^\*|\*$/g, "").replace(/^\s*([^:："]{1,28}?)\s*(?:\[[^\]]*\])?\s*[:：]\s*["“]/, "$1: ").replace(/["”]\s*$/, "").trim()).filter(Boolean).at(-1) || "";
+  const meta = { id: room.id, title: room.title, mode: room.mode, student_list: room.mode === "free" ? (room.met || []) : room.student_list, updated_at: room.updated_at,
+    count: room.messages.length, preview: preview.slice(0, 60), place: room.mode === "free" ? (currentScene(room)?.place || "") : "", outfit: room.outfit || "" };
   state.rooms = [meta, ...state.rooms.filter((r) => r.id !== room.id)];
   renderRooms();
   await store.set("room-" + room.id, room);
@@ -1162,6 +1197,7 @@ function openStudentSheet(id) {
   const s = state.students[id], b = state.bonds[id];
   const facts = [["학교", schoolOf(s).name + (s.year ? ` ${s.year}` : "")], ["소속", s.club], ["생일", s.birthday], ["키", s.height], ["취미", s.hobby], ["무기", s.weapon]].filter(([, v]) => v);
   const others = Object.keys(state.world.outfit_contexts).filter((o) => !s.outfits?.includes(o));
+  const last = state.rooms.find((r) => r.mode === "single" && r.student_list[0] === id); // 목록은 최근 순
   $("#sheet-body").innerHTML = `
     <div class="sheet-top">${halo(s, "huge")}<div><h2>${esc(s.full_name)}</h2>
       <p class="muted">${b ? `관계: ${esc(stageOf(b.affection).name)} (${b.affection}/100) — ${esc(stageOf(b.affection).short)}` : "아직 대화한 적이 없습니다."}</p></div></div>
@@ -1176,14 +1212,17 @@ function openStudentSheet(id) {
       </select></label>
     <label for="f-situation">상황 설정 (선택)
       <textarea id="f-situation" name="situation" rows="3" maxlength="1000" placeholder="예: 비 오는 날 샬레에서 서류 정리를 돕다가 둘만 남았다."></textarea></label>
+    <p class="muted">새 채팅은 예전 대화 내용을 이어 가지 않고 처음부터 시작합니다. (호감도는 학생마다 하나라 그대로 유지됩니다)</p>
     <div class="sheet-actions"><button class="btn ghost" value="cancel">닫기</button>
       <button class="btn ghost" id="sheet-meet">자유 모드로 만나러 가기</button>
-      <button class="btn primary" id="sheet-start">1:1 대화</button></div>`;
+      ${last ? `<button class="btn ghost" id="sheet-resume" title="${esc(last.title)}">이어서 채팅하기</button>` : ""}
+      <button class="btn primary" id="sheet-start">새 채팅 시작</button></div>`;
+  $("#sheet-resume")?.addEventListener("click", (e) => { e.preventDefault(); $("#sheet").close(); openRoom(last.id); });
   $("#sheet-meet").onclick = (e) => { e.preventDefault(); $("#sheet").close(); meetInFree(id); };
   $("#sheet-start").onclick = (e) => {
     e.preventDefault();
     const f = new FormData($("#sheet-body")); $("#sheet").close();
-    createRoom({ mode: "single", student_ids: [id], outfit: f.get("outfit") || "", situation: (f.get("situation") || "").trim() });
+    createRoom({ mode: "single", student_ids: [id], outfit: f.get("outfit") || "", situation: (f.get("situation") || "").trim(), fresh: true });
   };
   openSheet();
 }
@@ -1297,14 +1336,47 @@ $("#open-settings").onclick = () => {
 };
 
 // ───────── 대화방 목록 ─────────
+// 대화 목록: 학원별로 묶고(1:1은 학생의 학원, 스토리·자유 모드는 따로), 학생 얼굴·마지막 대사·시간·메시지 수를 보여 준다.
+let collapsedGroups = new Set();
+try { collapsedGroups = new Set(JSON.parse(localStorage.getItem("kivotos-collapsed") || "[]")); } catch {}
+function roomGroup(r) {
+  if (r.mode === "story") return ["story", "스토리"];
+  if (r.mode === "free") return ["free", "자유 모드"];
+  const st = state.students[r.student_list[0]];
+  return st ? [st.school, schoolOf(st).name] : ["etc", "기타"];
+}
+function when(iso) {
+  const d = new Date(iso), now = new Date();
+  return d.toDateString() === now.toDateString() ? d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+}
 function renderRooms() {
-  $("#room-list").innerHTML = state.rooms.length ? state.rooms.map((r) => `<li><button data-id="${r.id}" class="${state.room?.id === r.id ? "active" : ""}">
-      <span>${esc(r.title)}</span><span class="room-meta">${{ story: "스토리", free: `자유 · 만난 학생 ${r.student_list.length}명`, single: "1:1" }[r.mode]} ·${new Date(r.updated_at).toLocaleDateString("ko-KR")}</span></button></li>`).join("")
-    : `<li class="empty">아직 대화가 없습니다. 학생 명부에서 학생을 골라 보세요.</li>`;
-  $("#room-list").querySelectorAll("button").forEach((b) => (b.onclick = () => openRoom(b.dataset.id)));
+  if (!state.rooms.length) { $("#room-list").innerHTML = `<li class="empty">아직 대화가 없습니다. 학생 명부에서 학생을 골라 보세요.</li>`; return; }
+  const order = [...Object.keys(state.schools), "free", "story", "etc"];
+  const groups = new Map();
+  for (const r of state.rooms) { const [k, label] = roomGroup(r); if (!groups.has(k)) groups.set(k, { label, rooms: [] }); groups.get(k).rooms.push(r); }
+  const keys = [...groups.keys()].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  $("#room-list").innerHTML = keys.map((k) => {
+    const g = groups.get(k), color = state.schools[k]?.color || "var(--ink-soft)";
+    return `<li class="room-group"><details ${collapsedGroups.has(k) ? "" : "open"} data-group="${k}"><summary style="--school:${color}">${esc(g.label)} <span class="count">${g.rooms.length}</span></summary><ul>` +
+      g.rooms.map((r) => {
+        const studs = r.student_list.map((i) => state.students[i]).filter(Boolean).slice(0, 3);
+        const mode = { story: "스토리", free: `자유${r.place ? " · " + r.place : ""}`, single: "1:1" + (r.outfit ? ` · ${r.outfit}` : "") }[r.mode];
+        return `<li><button data-id="${r.id}" class="${state.room?.id === r.id ? "active" : ""}">
+          <span class="room-faces">${studs.map((s) => halo(s, "", r.mode === "single" ? r.outfit || "" : "")).join("") || '<span class="halo"><span class="face">?</span></span>'}</span>
+          <span class="room-main"><span class="room-title">${esc(r.title)}</span><span class="room-time">${when(r.updated_at)}</span>
+            <span class="room-meta">${esc(mode)}${r.count ? ` · 메시지 ${r.count}개` : ""}</span>
+            ${r.preview ? `<span class="room-preview">${esc(r.preview)}</span>` : ""}</span></button></li>`;
+      }).join("") + `</ul></details></li>`;
+  }).join("");
+  $("#room-list").querySelectorAll("button[data-id]").forEach((b) => (b.onclick = () => openRoom(b.dataset.id)));
+  $("#room-list").querySelectorAll("details").forEach((d) => d.addEventListener("toggle", () => {
+    d.open ? collapsedGroups.delete(d.dataset.group) : collapsedGroups.add(d.dataset.group);
+    try { localStorage.setItem("kivotos-collapsed", JSON.stringify([...collapsedGroups])); } catch {}
+  }));
 }
 
-async function createRoom({ mode, student_ids = [], outfit = "", scenario_id = "", situation = "", place_id = "", meet = "" }) {
+async function createRoom({ mode, student_ids = [], outfit = "", scenario_id = "", situation = "", place_id = "", meet = "", fresh = false }) {
   const first = state.students[student_ids[0]];
   const sc = scenario_id ? state.scenarios.find((x) => x.id === scenario_id) : null;
   const place = place_id ? state.world.places.find((p) => p.id === place_id) : null;
@@ -1314,6 +1386,7 @@ async function createRoom({ mode, student_ids = [], outfit = "", scenario_id = "
       : first.name + (outfit ? ` (${outfit})` : ""),
     messages: sc?.opening ? [{ role: "assistant", content: sc.opening, affection: {} }] : [],
   };
+  if (fresh) room.fresh = true;
   if (mode === "free") {
     room.place_id = place_id;
     room.met = meet ? [meet] : [];
@@ -1344,7 +1417,7 @@ function renderAssistant(text) {
     if (talk) {
       const { who, emo } = splitSpeaker(talk[1]);
       const st = findStudentByName(who);
-      const face = st ? halo(st) : `<span class="halo"><span class="face" aria-hidden="true">${esc(who[0] || "?")}</span></span>`;
+      const face = st ? halo(st, "", wearOf(st.id)) : `<span class="halo"><span class="face" aria-hidden="true">${esc(who[0] || "?")}</span></span>`;
       const mark = EMOTES[emo] ? `<span class="emote" role="img" aria-label="${esc(emo)}" title="${esc(emo)}">${EMOTES[emo]}</span>` : "";
       return `<div class="line"><span class="face-wrap">${face}${mark}</span><div class="bubble" ${st ? `style="--school:${schoolOf(st).color}"` : ""}><b>${esc(st ? st.name : who)}</b>${esc(talk[2])}</div></div>`;
     }
@@ -1364,7 +1437,7 @@ function renderChatHead() {
   // 자유 모드는 지금 장면에 있는 학생, 나머지는 방에 고정된 학생을 보여 준다.
   const ids = room.mode === "free" ? (scene?.present || []) : room.student_list;
   const studs = ids.map((i) => state.students[i]).filter(Boolean);
-  $("#chat-halos").innerHTML = studs.slice(0, 4).map((s) => halo(s, "big")).join("");
+  $("#chat-halos").innerHTML = studs.slice(0, 4).map((s) => halo(s, "big", wearOf(s.id, room))).join("");
   $("#chat-title").textContent = room.title;
   $("#topbar-title").textContent = room.title;
   $("#cover-delete").hidden = false;
@@ -1533,7 +1606,8 @@ async function runTurn(kind) {
     const { text: raw, truncated, fallback } = await state.sample(buildTurns(room), opts);
     if (fallback) toast(`${fallback.from} 사용 한도 때문에 ${fallback.to}(으)로 바꿨습니다. 앞으로 이 모델을 계속 씁니다. 원래 모델로 돌아가려면 'AI 설정'에서 저장하세요.`);
     const pend = pendingCatch(room);
-    let { text, changes, scene, suggest } = parseReply(raw);
+    let { text, changes, scene, suggest, wear } = parseReply(raw);
+    if (Object.keys(wear).length) room.wear = { ...(room.wear || {}), ...wear };
     // 직전에 '이번에야말로!!'로 끊겼으면 이번엔 뒷말을 보장하고, 아니면 한 번에 다 외친 대사를 앞부분에서 끊는다
     if (text) text = pend ? ensurePayoff(text, pend) : cutCatch(suppressCatch(text, room));
     const applied = applyAffection(room, changes);
