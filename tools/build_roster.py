@@ -80,6 +80,14 @@ NEW_STUDENTS = [
     ("kokuriko", "코쿠리코", "코쿠리코", "Hyakkiyako", "화조풍월부", ""),
     ("kiki", "키키", "키키", "Shanhaijing", "매화원 원생", ""),
     ("natsuki", "나츠키", "아사쿠사 나츠키", "Hyakkiyako", "인력거부", ""),
+    # 2부 등장인물 (게임 시나리오 데이터 ScenarioCharacterName 기준. 미공개 정보는 비워 둔다)
+    ("mayumi", "마유미", "후리하타 마유미", "Gehenna", "게헨나재흥위원회 (회장)", ""),
+    ("karen", "카렌", "묘라쿠 카렌", "Gehenna", "게헨나재흥위원회", ""),
+    ("shoko", "쇼코", "이가라시 쇼코", "Gehenna", "게헨나재흥위원회 (서기)", ""),
+    ("misuzu", "미스즈", "미스즈", "Valkyrie", "교정국", ""),
+    ("mai", "마이", "카자마키 마이", "Chronos", "보도부", ""),
+    ("sumomo", "스모모", "스모모", "GSC", "행정위원회", ""),
+    ("gsc_president", "총학생회장", "총학생회장 (2부)", "GSC", "총학생회장", ""),
     # 싯딤의 상자 OS (학생이 아님. 학생들은 둘을 인식하지 못한다)
     ("arona", "아로나", "아로나", "Shittim", "메인 OS", ""),
     ("plana", "프라나", "프라나", "Shittim", "서브 OS", ""),
@@ -97,11 +105,12 @@ NEW_ART = {
 NPC_ART = {sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/npc_portrait_{name}.png" for sid, name in {
     "rin": "rin", "momoka": "momoka", "ayumu": "np0013", "aoi": "np0032", "kaya": "np0015", "haine": "np0033",
     "kaguya": "np0242", "sora": "sora", "ayame": "np0206", "kiki": "np0216", "natsuki": "np0182",
-    "arona": "arona", "plana": "np0035",
+    "arona": "arona", "plana": "np0035", "sumomo": "np0037", "gsc_president": "np0290",
 }.items()}
 # 적 유닛·이벤트용 학생 초상(Student_Portrait)이 있는 NPC는 그쪽을 쓴다 (플레이어블 아이콘과 같은 화풍).
 NPC_ART.update({sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_{code}.png" for sid, code in {
     "yukino": "ch0171", "arata": "ch0236", "suou": "ch0244", "akemi": "ch0265", "kokuriko": "ch0226",
+    "mayumi": "ch0362", "karen": "ch0363", "shoko": "ch0364", "misuzu": "ch0352", "mai": "mai",
 }.items()})
 # 글로벌 데이터에 기본 의상 없이 이격만 있는 학생(키사키=수영복, 리오=특수 슈트)은 기본 의상 초상으로 덮어쓴다.
 BASE_ART = {sid: f"https://ba-l10n-r2.cnfast.top/ba/01_01_Character/student_portrait_{code}.png" for sid, code in {
@@ -124,9 +133,11 @@ TITLE_WHO = {("midori", "#언니"): "모모이", ("momoi", "#언니"): None}
 # 표시 이름 바꾸기: SchaleDB의 '시로코*테러'는 별표(*)가 '행동' 표시와 겹쳐 대사·입력이 잘못 나뉜다. 게임 시나리오 표기('시로코 테러')로 쓴다.
 NAME_OVERRIDE = {"shiroko_terror": ("시로코 테러", "스나오오카미 시로코(테러)")}
 # 유저나 AI가 부를 수 있는 다른 이름. 이 이름으로 불러도 그 학생으로 알아본다.
+# 별칭은 응답 전체에서 이름으로 바뀌므로, 일반 명사('회장님', '가짜 총학생회장' 등)는 넣지 않는다.
 ALIASES = {"shiroko_terror": ["시로코*테러", "시로코＊테러", "시로코테러", "테러 시로코", "큰 시로코", "어른 시로코", "다른 세계의 시로코"]}
 PEER_EXTRA = {"midori": [["kei", "반말", "케이 쨩", 9]],  # '케이 쨩도 너무 화내지 말아 줘'
-              "momoi": [["yuzu", "반말", "유즈", 9]]}     # '유즈는 어떻게 생각해?' ('유즈!'처럼 부름말만 있는 대사가 많아 집계에서 빠짐)
+              "momoi": [["yuzu", "반말", "유즈", 9]],
+              "yuuka": [["aris", "반말", "아리스 쨩", 4]]}  # 대사 전체로는 '아리스 쨩' 12회 / '아리스 양' 6회     # '유즈는 어떻게 생각해?' ('유즈!'처럼 부름말만 있는 대사가 많아 집계에서 빠짐)
 
 
 def load_personas() -> dict:
@@ -227,7 +238,8 @@ def main(db_path: str) -> None:
     for e in roster:
         if looks.get(e["id"]):
             e["appearance"] = looks[e["id"]]
-        rows = peers.get(e["id"], []) + PEER_EXTRA.get(e["id"], [])
+        # 같은 상대가 있으면 PEER_EXTRA(직접 확인한 값)가 집계값을 덮어쓴다. dict는 넣은 순서를 지킨다.
+        rows = list({r[0]: r for r in peers.get(e["id"], []) + PEER_EXTRA.get(e["id"], [])}.values())
         if rows:
             e["peers"] = peer_text(e["id"], rows, names)
 
