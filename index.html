@@ -184,6 +184,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .affection-note { font-size: .85rem; color: var(--gold-text); }
 .status-line { color: var(--ink-soft); }
 .error-line { color: var(--danger); font-size: .88rem; }
+.error-line .err-detail { color: var(--ink-soft); font-size: .75rem; word-break: break-all; }
 .empty { color: var(--ink-soft); }
 
 .composer { background: var(--paper); border-top: 1px solid var(--line); padding-block: .7rem 1rem; padding-inline: clamp(16px, 3vw, 32px); display: grid; gap: .5rem; }
@@ -1611,6 +1612,10 @@ function clearSelection() {
   $("#msg-bar").hidden = true;
 }
 $("#messages").addEventListener("click", (e) => {
+  if (e.target.closest("[data-resume]")) { // 끊긴 답장을 끊긴 곳부터 이어 쓰기
+    e.target.closest(".error-line")?.remove();
+    return runTurn("resume");
+  }
   if (e.target.closest("[data-retry-quick]")) { // '빠른 모델로 다시 시도' (claude.ai 전용)
     $("#tier").value = "quick";
     e.target.closest(".error-line")?.remove();
@@ -1691,7 +1696,51 @@ const ERROR_TEXT = {
   refused: "이 내용에는 답할 수 없습니다. 다른 방향으로 이야기를 이어 보세요.",
   prompt_too_large: "대화가 너무 깁니다. 되돌리기로 몇 턴을 지우거나 새 대화를 시작하세요.",
   empty_completion: "응답이 비어 있습니다. 다시 생성해 보세요.",
+  network: "연결이 끊겨 답장을 끝까지 받지 못했습니다. 휴대폰에서 다른 앱으로 넘어가거나 화면이 꺼지면 연결이 끊길 수 있어요.",
+  upstream_error: "AI 서버와의 연결이 중간에 끊겼습니다.",
 };
+
+// ───────── 끊긴 답장 이어 받기 ─────────
+// 답장이 쓰이다가 연결 문제로 끊기면, 처음부터 다시 쓰게 하지 않고 '끊긴 곳 다음부터' 이어 쓰게 한다.
+const RESUME_CODES = new Set(["network", "upstream_error", "overloaded", "timeout"]);
+const MAX_RESUMES = 2; // 직접 호출일 때 자동으로 이어 받는 최대 횟수
+const RESUME_NOTE = "(시스템 메모 — 선생님의 말이 아님) 바로 위 답장이 연결 문제로 중간에 끊겼습니다. 끊긴 글자 바로 다음부터 이어서 쓰세요. 이미 쓴 부분을 되풀이하거나 처음부터 다시 쓰지 말고, 남은 내용과 끝의 숨김 태그만 쓰세요.";
+// 앞부분(a)과 이어 쓴 부분(b)을 붙인다. AI가 끊긴 끝부분을 조금 되풀이했으면 겹친 만큼 잘라 낸다.
+function joinCut(a, b) {
+  if (!a) return b || "";
+  if (!b) return a;
+  const t = a.trimEnd(); // 저장된 앞부분은 끝 공백이 잘려 있으므로 공백을 빼고 비교한다
+  for (let k = Math.min(200, t.length, b.length); k >= 2; k--) if (t.endsWith(b.slice(0, k))) return t + b.slice(k);
+  return a + b;
+}
+function turnsFor(room, prefix) {
+  const t = buildTurns(room);
+  if (prefix) t.push({ role: "assistant", content: prefix }, { role: "user", content: RESUME_NOTE });
+  return t;
+}
+// 화면이 꺼져 있거나 다른 앱에 가 있으면 돌아올 때까지 기다린다 (그 상태에선 다시 연결해도 또 끊긴다)
+const waitVisible = () => document.hidden ? new Promise((ok) => {
+  const f = () => { if (!document.hidden) { document.removeEventListener("visibilitychange", f); ok(); } };
+  document.addEventListener("visibilitychange", f);
+}) : Promise.resolve();
+// prefix부터 이어 쓰게 하고, 끊기면(직접 호출일 때만) 끊긴 곳에서 다시 이어 받는다
+async function sampleResumable(room, prefix, opts) {
+  let acc = prefix, fallback;
+  for (let tries = 0; ; tries++) {
+    const base = acc;
+    try {
+      const r = await state.sample(turnsFor(room, base), { ...opts, onText: ({ text }) => opts.onText?.({ text: joinCut(base, text) }) });
+      fallback = fallback || r.fallback;
+      return { ...r, text: joinCut(base, r.text), fallback };
+    } catch (e) {
+      acc = joinCut(base, e?.text || "");
+      // claude.ai 안에서는 페이지가 스스로 재시도하면 안 되므로, 사용자가 '이어 쓰기' 버튼을 누르게 한다
+      if (IN_CLAUDE || e?.code === "cancelled" || !RESUME_CODES.has(e?.code) || tries >= MAX_RESUMES) throw { ...e, text: acc || undefined };
+      opts.onStatus?.(acc ? "연결이 끊겨 끊긴 곳부터 이어 받는 중…" : "연결이 끊겨 다시 받는 중…", acc);
+      await waitVisible();
+    }
+  }
+}
 
 // kind: "send" | "continue" | "regenerate"
 async function runTurn(kind) {
@@ -1711,10 +1760,16 @@ async function runTurn(kind) {
     applyAffection(room, last.affection || {}, -1);
     room.messages.pop(); renderChat();
   }
+  let prefix = ""; // 끊긴 답장의 앞부분 ('끊긴 곳부터 이어 쓰기')
+  if (kind === "resume") {
+    const last = room.messages.at(-1);
+    if (!last?.cut) return toast("이어 쓸 끊긴 답장이 없습니다.");
+    prefix = last.content; room.messages.pop(); renderChat();
+  }
   const ctl = new AbortController(); state.ctl = ctl;
   setBusy(true);
   $("#messages").querySelector(".empty")?.remove();
-  $("#messages").insertAdjacentHTML("beforeend", `<li class="msg assistant" id="live"><span class="status-line">답장을 쓰는 중…</span></li>`);
+  $("#messages").insertAdjacentHTML("beforeend", `<li class="msg assistant" id="live">${prefix ? renderAssistant(prefix) : ""}<span class="status-line">답장을 쓰는 중…</span></li>`);
   // 첫 글자가 나올 때까지 경과 시간을 보여 준다. 생각이 긴 모델은 수십 초 걸릴 수 있어서, 멈춘 게 아니라는 걸 알리기 위해서다.
   const startedAt = Date.now();
   const ticker = setInterval(() => {
@@ -1732,8 +1787,8 @@ async function runTurn(kind) {
       onText: ({ text }) => { const live = $("#live"); if (live && state.room === room) { live.innerHTML = renderAssistant(visibleText(text)); updateJump(); } },
     };
     // 직접 호출(GitHub Pages)일 때만: 모델을 바꿔 다시 시도하는 중이라는 것을 말풍선에 보여 준다
-    if (!IN_CLAUDE) opts.onStatus = (msg) => { const live = $("#live"); if (live) live.innerHTML = `<span class="status-line">${esc(msg)}</span>`; };
-    const { text: raw, truncated, fallback } = await state.sample(buildTurns(room), opts);
+    if (!IN_CLAUDE) opts.onStatus = (msg, part) => { const live = $("#live"); if (live) live.innerHTML = (part ? renderAssistant(visibleText(part)) : "") + `<span class="status-line">${esc(msg)}</span>`; };
+    const { text: raw, truncated, fallback } = await sampleResumable(room, prefix, opts);
     if (fallback) toast(`${fallback.from} 사용 한도 때문에 ${fallback.to}(으)로 바꿨습니다. 앞으로 이 모델을 계속 씁니다. 원래 모델로 돌아가려면 'AI 설정'에서 저장하세요.`);
     const pend = pendingCatch(room);
     let { text, changes, scene, suggest, wear } = parseReply(raw);
@@ -1762,8 +1817,9 @@ async function runTurn(kind) {
     maybeSummarize(room);
   } catch (e) {
     const keep = e?.text ? visibleText(e.text) : "";
-    if (keep && e.code !== "refused") { // 끊긴 응답이라도 쓰인 부분은 남긴다
-      room.messages.push({ role: "assistant", content: keep, affection: {} });
+    const cut = keep && e.code !== "refused";
+    if (cut) { // 끊긴 응답이라도 쓰인 부분은 남기고, 나중에 거기서부터 이어 쓸 수 있게 표시한다
+      room.messages.push({ role: "assistant", content: keep, affection: {}, cut: true });
       await saveRoom(room);
     }
     if (state.room === room) {
@@ -1774,7 +1830,10 @@ async function runTurn(kind) {
         // claude.ai에서는 페이지가 스스로 재시도하면 안 되므로, 사용자가 누르는 버튼으로 더 가벼운 모델에서 다시 시도하게 한다
         const retry = IN_CLAUDE && e?.code === "rate_limited" && $("#tier").value !== "quick"
           ? ` <button type="button" class="btn ghost" data-retry-quick>빠른 모델로 다시 시도</button>` : "";
-        $("#messages").insertAdjacentHTML("beforeend", `<li class="error-line">${esc(text)}${retry}</li>`);
+        // 무슨 오류였는지 짧게 같이 보여 준다 (원인을 찾을 때 필요)
+        const detail = ERROR_TEXT[e?.code] && !RESUME_CODES.has(e?.code) ? "" : ` <small class="err-detail">(${esc(String(e?.code || "unknown"))}${e?.message ? ": " + esc(String(e.message).slice(0, 120)) : ""})</small>`;
+        const resume = cut && e?.code !== "cancelled" ? ` <button type="button" class="btn ghost" data-resume>끊긴 곳부터 이어 쓰기</button>` : "";
+        $("#messages").insertAdjacentHTML("beforeend", `<li class="error-line">${esc(text)}${detail}${resume}${retry}</li>`);
         scrollDown();
       }
     }
@@ -2093,7 +2152,10 @@ function createDirectSample() {
           const payload = s.slice(5).trim();
           if (!payload || payload === "[DONE]") continue;
           let data; try { data = JSON.parse(payload); } catch { continue; }
-          if (data.error) throw { code: "upstream_error", message: data.error.message || "stream error" };
+          if (data.error) { // 스트림 도중에 온 오류: 서버 혼잡/한도는 따로 구분한다
+            const m = `${data.error.status || data.error.code || ""} ${data.error.message || "stream error"}`;
+            throw { code: /UNAVAILABLE|overload|503|529/i.test(m) ? "overloaded" : /RESOURCE_EXHAUSTED|429|rate/i.test(m) ? "rate_limited" : "upstream_error", message: m.trim() };
+          }
           const d = deltaOf(cfg.provider, data);
           if (d) { text += d; onText?.({ text, delta: d }); }
         }
@@ -2106,7 +2168,9 @@ function createDirectSample() {
         throw { code: "cancelled", message: "cancelled", text };
       }
       if (e?.code) throw { ...e, text: text || undefined };
-      throw { code: "upstream_error", message: String(e), text: text || undefined }; // 네트워크 오류 등
+      // fetch 자체가 실패(TypeError)하거나 읽던 중 끊긴 것은 네트워크 끊김이다
+      const net = e instanceof TypeError || /network|fetch|load failed|connection/i.test(String(e));
+      throw { code: net ? "network" : "upstream_error", message: String(e), text: text || undefined };
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener("abort", onUserAbort);
