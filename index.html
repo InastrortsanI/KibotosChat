@@ -88,6 +88,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
 .room-group > details > summary::before { content: "▾"; font-size: .7rem; transition: transform .15s; }
 .room-group > details:not([open]) > summary::before { transform: rotate(-90deg); }
 .room-group .count { color: var(--ink-soft); font-weight: 400; }
+.room-sort { display: flex; gap: 2px; background: var(--bg); border-radius: var(--radius-sm); padding: 2px; margin: .2rem 0 .3rem; }
+.room-sort button { flex: 1; border: 0; background: none; font: inherit; font-size: .78rem; color: var(--ink-soft); padding: .25rem; border-radius: calc(var(--radius-sm) - 2px); cursor: pointer; }
+.room-sort button.on { background: var(--paper); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.room-tag { display: inline-block; font-size: .7rem; font-weight: 700; color: var(--school); margin-right: .3rem; }
 .room-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .room-list button[data-id] { grid-template-columns: auto 1fr; gap: .55rem; align-items: center; }
 .room-faces { display: flex; }
@@ -363,6 +367,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--blue); outline: 
       <button data-view="chats" class="tab">내 대화 모아보기</button>
     </nav>
     <h2 class="side-title">내 대화 <button class="btn link side-more" id="open-chats">자세히 보기</button></h2>
+    <div class="room-sort" role="group" aria-label="대화 목록 보기 방식">
+      <button type="button" data-sort="recent">최근순</button><button type="button" data-sort="school">학원별</button>
+    </div>
     <ul id="room-list" class="room-list"><li class="empty">대화 목록을 불러오는 중…</li></ul>
     <div class="sidebar-foot">
       <div class="row"><span class="muted">테마 · 프로필 사진</span><button class="btn link" id="open-prefs">설정</button></div>
@@ -1473,30 +1480,50 @@ function when(iso) {
   return d.toDateString() === now.toDateString() ? d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
     : d.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
 }
+// 대화 목록 보기 방식: 'recent'(마지막 대화 순서로 한 줄) / 'school'(학원별 묶음). 기본은 최근순
+let roomSort = "recent";
+try { roomSort = localStorage.getItem("kivotos-roomsort") || "recent"; } catch {}
+document.querySelectorAll(".room-sort button").forEach((b) => (b.onclick = () => {
+  roomSort = b.dataset.sort;
+  try { localStorage.setItem("kivotos-roomsort", roomSort); } catch {}
+  renderRooms();
+}));
 function renderRooms() {
+  document.querySelectorAll(".room-sort button").forEach((b) => b.classList.toggle("on", b.dataset.sort === roomSort));
   if (!state.rooms.length) { $("#room-list").innerHTML = `<li class="empty">아직 대화가 없습니다. 학생 명부에서 학생을 골라 보세요.</li>`; return; }
-  const order = [...Object.keys(state.schools), "free", "story", "etc"];
-  const groups = new Map();
-  for (const r of state.rooms) { const [k, label] = roomGroup(r); if (!groups.has(k)) groups.set(k, { label, rooms: [] }); groups.get(k).rooms.push(r); }
-  const keys = [...groups.keys()].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  $("#room-list").innerHTML = keys.map((k) => {
-    const g = groups.get(k), color = state.schools[k]?.color || "var(--ink-soft)";
-    return `<li class="room-group"><details ${collapsedGroups.has(k) ? "" : "open"} data-group="${k}"><summary style="--school:${color}">${esc(g.label)} <span class="count">${g.rooms.length}</span></summary><ul>` +
-      g.rooms.map((r) => {
-        const studs = r.student_list.map((i) => state.students[i]).filter(Boolean).slice(0, 3);
-        const mode = { story: "스토리", free: `자유${r.place ? " · " + r.place : ""}`, single: "1:1" + (r.outfit ? ` · ${r.outfit}` : "") }[r.mode];
-        return `<li><button data-id="${r.id}" class="${state.room?.id === r.id ? "active" : ""}">
-          <span class="room-faces">${studs.map((s) => halo(s, "", r.mode === "single" ? r.outfit || "" : "")).join("") || '<span class="halo"><span class="face">?</span></span>'}</span>
-          <span class="room-main"><span class="room-title">${esc(r.title)}</span><span class="room-time">${when(r.updated_at)}</span>
-            <span class="room-meta">${esc(mode)}${r.count ? ` · 메시지 ${r.count}개` : ""}</span>
-            ${r.preview ? `<span class="room-preview">${esc(r.preview)}</span>` : ""}</span></button></li>`;
-      }).join("") + `</ul></details></li>`;
-  }).join("");
+  const byTime = [...state.rooms].sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+  if (roomSort === "recent") {
+    // 학원 이름은 각 대화 앞에 작은 꼬리표로만 붙인다
+    $("#room-list").innerHTML = byTime.map((r) => {
+      const [k, label] = roomGroup(r);
+      // 자유 모드·스토리는 모드 이름이 이미 적혀 있으므로 학원 대화에만 붙인다
+      return roomItem(r, state.schools[k] ? `<span class="room-tag" style="--school:${state.schools[k].color}">${esc(label)}</span>` : "");
+    }).join("");
+  } else {
+    const order = [...Object.keys(state.schools), "free", "story", "etc"];
+    const groups = new Map();
+    for (const r of byTime) { const [k, label] = roomGroup(r); if (!groups.has(k)) groups.set(k, { label, rooms: [] }); groups.get(k).rooms.push(r); }
+    const keys = [...groups.keys()].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    $("#room-list").innerHTML = keys.map((k) => {
+      const g = groups.get(k), color = state.schools[k]?.color || "var(--ink-soft)";
+      return `<li class="room-group"><details ${collapsedGroups.has(k) ? "" : "open"} data-group="${k}"><summary style="--school:${color}">${esc(g.label)} <span class="count">${g.rooms.length}</span></summary><ul>` +
+        g.rooms.map((r) => roomItem(r)).join("") + `</ul></details></li>`;
+    }).join("");
+  }
   $("#room-list").querySelectorAll("button[data-id]").forEach((b) => (b.onclick = () => openRoom(b.dataset.id)));
   $("#room-list").querySelectorAll("details").forEach((d) => d.addEventListener("toggle", () => {
     d.open ? collapsedGroups.delete(d.dataset.group) : collapsedGroups.add(d.dataset.group);
     try { localStorage.setItem("kivotos-collapsed", JSON.stringify([...collapsedGroups])); } catch {}
   }));
+}
+function roomItem(r, tag = "") {
+        const studs = r.student_list.map((i) => state.students[i]).filter(Boolean).slice(0, 3);
+        const mode = { story: "스토리", free: `자유${r.place ? " · " + r.place : ""}`, single: "1:1" + (r.outfit ? ` · ${r.outfit}` : "") }[r.mode];
+        return `<li><button data-id="${r.id}" class="${state.room?.id === r.id ? "active" : ""}">
+          <span class="room-faces">${studs.map((s) => halo(s, "", r.mode === "single" ? r.outfit || "" : "")).join("") || '<span class="halo"><span class="face">?</span></span>'}</span>
+          <span class="room-main"><span class="room-title">${esc(r.title)}</span><span class="room-time">${when(r.updated_at)}</span>
+            <span class="room-meta">${tag}${esc(mode)}${r.count ? ` · 메시지 ${r.count}개` : ""}</span>
+            ${r.preview ? `<span class="room-preview">${esc(r.preview)}</span>` : ""}</span></button></li>`;
 }
 
 async function createRoom({ mode, student_ids = [], outfit = "", scenario_id = "", situation = "", place_id = "", meet = "", fresh = false }) {
@@ -1703,7 +1730,8 @@ const ERROR_TEXT = {
 // ───────── 끊긴 답장 이어 받기 ─────────
 // 답장이 쓰이다가 연결 문제로 끊기면, 처음부터 다시 쓰게 하지 않고 '끊긴 곳 다음부터' 이어 쓰게 한다.
 const RESUME_CODES = new Set(["network", "upstream_error", "overloaded", "timeout"]);
-const MAX_RESUMES = 2; // 직접 호출일 때 자동으로 이어 받는 최대 횟수
+const MAX_RESUMES = 3; // 직접 호출일 때 자동으로 이어 받는 최대 횟수
+const RESUME_WAIT_MS = [1500, 4000, 8000]; // 이어 받기 전에 기다리는 시간 (서버 혼잡은 잠깐 쉬면 풀리는 경우가 많다)
 const RESUME_NOTE = "(시스템 메모 — 선생님의 말이 아님) 바로 위 답장이 연결 문제로 중간에 끊겼습니다. 끊긴 글자 바로 다음부터 이어서 쓰세요. 이미 쓴 부분을 되풀이하거나 처음부터 다시 쓰지 말고, 남은 내용과 끝의 숨김 태그만 쓰세요.";
 // 앞부분(a)과 이어 쓴 부분(b)을 붙인다. AI가 끊긴 끝부분을 조금 되풀이했으면 겹친 만큼 잘라 낸다.
 function joinCut(a, b) {
@@ -1736,7 +1764,9 @@ async function sampleResumable(room, prefix, opts) {
       acc = joinCut(base, e?.text || "");
       // claude.ai 안에서는 페이지가 스스로 재시도하면 안 되므로, 사용자가 '이어 쓰기' 버튼을 누르게 한다
       if (IN_CLAUDE || e?.code === "cancelled" || !RESUME_CODES.has(e?.code) || tries >= MAX_RESUMES) throw { ...e, text: acc || undefined };
-      opts.onStatus?.(acc ? "연결이 끊겨 끊긴 곳부터 이어 받는 중…" : "연결이 끊겨 다시 받는 중…", acc);
+      const why = e.code === "overloaded" ? "AI 서버가 붐벼서" : "연결이 끊겨";
+      opts.onStatus?.(acc ? `${why} 잠시 뒤 끊긴 곳부터 이어 받는 중… (${tries + 1}/${MAX_RESUMES})` : `${why} 잠시 뒤 다시 받는 중… (${tries + 1}/${MAX_RESUMES})`, acc);
+      await new Promise((ok) => setTimeout(ok, RESUME_WAIT_MS[tries] || 8000));
       await waitVisible();
     }
   }
@@ -1789,7 +1819,7 @@ async function runTurn(kind) {
     // 직접 호출(GitHub Pages)일 때만: 모델을 바꿔 다시 시도하는 중이라는 것을 말풍선에 보여 준다
     if (!IN_CLAUDE) opts.onStatus = (msg, part) => { const live = $("#live"); if (live) live.innerHTML = (part ? renderAssistant(visibleText(part)) : "") + `<span class="status-line">${esc(msg)}</span>`; };
     const { text: raw, truncated, fallback } = await sampleResumable(room, prefix, opts);
-    if (fallback) toast(`${fallback.from} 사용 한도 때문에 ${fallback.to}(으)로 바꿨습니다. 앞으로 이 모델을 계속 씁니다. 원래 모델로 돌아가려면 'AI 설정'에서 저장하세요.`);
+    if (fallback) toast(`${fallback.from}이(가) 붐비거나 한도에 닿아서 ${fallback.to}(으)로 바꿨습니다. 앞으로 이 모델을 계속 씁니다. 원래 모델로 돌아가려면 'AI 설정'에서 저장하세요.`);
     const pend = pendingCatch(room);
     let { text, changes, scene, suggest, wear } = parseReply(raw);
     if (Object.keys(wear).length) room.wear = { ...(room.wear || {}), ...wear };
@@ -2097,19 +2127,24 @@ function createDirectSample() {
 
   async function withFallback(turns, opts = {}, stream = true) {
     const tried = new Set();
-    const started = startModel();
+    const preferred = startModel();
+    let started = preferred;
+    // 방금 혼잡·한도로 끊긴 모델이면(이어 받기 등) 쉬는 동안 다른 모델부터 시도한다
+    if (cooldown[preferred] > Date.now()) started = (await listModels(cfg)).find((m) => !(cooldown[m] > Date.now())) || preferred;
     let model = started;
     for (let switches = 0; ; switches++) {
       tried.add(model);
       try {
         const result = await call(model, turns, opts, stream);
-        if (model !== started) { // 이번에 실제로 모델을 바꿨을 때만: 바꾼 모델을 저장해 두고 알린다
+        if (model !== preferred) { // 이번에 실제로 모델을 바꿨을 때만: 바꾼 모델을 저장해 두고 알린다
           aiConfig.active = model === primary ? "" : model;
           saveAiConfig(); renderAiStatus();
-          result.fallback = { from: started, to: model };
+          result.fallback = { from: preferred, to: model };
         }
         return result;
       } catch (e) {
+        // 답장 도중에 혼잡·한도로 끊겼어도 그 모델은 잠시 쉬게 한다 (이어 받을 때 다른 모델을 쓰도록)
+        if (e.text && (e.code === "overloaded" || e.code === "rate_limited")) cooldown[model] = Date.now() + COOLDOWN_MS;
         // 답장이 이미 써지기 시작했거나(섞이면 안 됨), 전환할 오류가 아니거나, 사용자가 고른 모델 이름 자체가 틀린 경우는 그대로 알린다
         if (!FALLBACK_CODES.has(e.code) || e.text || (e.code === "bad_model" && model === primary) || switches >= MAX_SWITCHES) throw e;
         if (e.code !== "bad_model") cooldown[model] = Date.now() + COOLDOWN_MS;
